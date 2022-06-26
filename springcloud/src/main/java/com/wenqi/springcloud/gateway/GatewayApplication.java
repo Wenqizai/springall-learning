@@ -1,4 +1,4 @@
-package com.wenqi.gateway;
+package com.wenqi.springcloud.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,5 +11,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class GatewayApplication {
     public static void main(String[] args) {
         SpringApplication.run(GatewayApplication.class, args);
+    }
+
+
+    public static void testGateway() {
+        String url = "";
+        String s = String.valueOf("123");
     }
 }
