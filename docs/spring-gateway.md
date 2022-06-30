@@ -391,6 +391,424 @@ public RouteLocator customRouteLocator(RouteLocatorBuilder builder) { // ①
 4. 指定了一个 Filter，下游服务响应后添加响应头`X-TestHeader:foobar`，通过AddResponseHeaderGatewayFilterFactory 产生；
 5. 指定路由转发的目的地 uri。
 
+#### 构建原理
+
+##### GatewayProperties
+
+加载配置yml，绑定GatewayProperties。
+
+```java
+@ConfigurationProperties(GatewayProperties.PREFIX)
+@Validated
+public class GatewayProperties {
+    // 绑定前缀spring.cloud.gateway
+    public static final String PREFIX = "spring.cloud.gateway";
+	// Route定义
+    private List<RouteDefinition> routes = new ArrayList<>();
+	// 默认Filter
+    private List<FilterDefinition> defaultFilters = new ArrayList<>();
+}
+```
+
+##### RouteDefinition
+
+对`Route`信息进行定义，最终会被`RouteLocator`解析成`Route`。
+
+```java
+public class RouteDefinition {
+	// 定义 Route 的 id，默认使用 UUID
+    private String id;
+    // 定义 Predicate
+    private List<PredicateDefinition> predicates = new ArrayList<>();
+	// 定义 Filter
+    private List<FilterDefinition> filters = new ArrayList<>();
+	// 定义目的地 URI
+    private URI uri;
+	// 定义元数据
+    private Map<String, Object> metadata = new HashMap<>();
+	// 定义 Route 的序号
+    private int order = 0;
+}
+```
+
+##### FilterDefinition
+
+遵循组件名前缀 + `Definition` 后缀的命名规范，用于定义 Filter
+
+```java
+public class FilterDefinition {
+    // 定义了 Filter 的名称，符合特定的命名规范，为对应的工厂名前缀
+    private String name;
+    // 一个键值对参数用于构造 Filter 对象
+    private Map<String, String> args = new LinkedHashMap<>();
+}
+```
+
+配置文件配置的filters，被Spring解析后绑定到一个FilterDefinition。
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: add_request_header_route
+        uri: http://example.org
+        filters:
+        - AddRequestHeader=X-Request-Foo, Bar # ①
+```
+
+- AddRequestHeader：对应 FilterDefinition 中的 `name` 属性。
+- X-Request-Foo, Bar：会被解析成 FilterDefinition 中的 Map 类型属性 `args`。此处会被解析成两组键值对，以英文逗号将`=`后面的字符串分隔成数组，`key`是固定字符串 `_genkey_` + 数组元素下标，`value`为数组元素自身。
+
+![gateway-FilterDefinition加载.png](spring-gateway.assets/gateway-FilterDefinition加载.png)
+
+```java
+// FilterDefinition 构造函数
+public FilterDefinition(String text) {
+    int eqIdx = text.indexOf("=");
+    if (eqIdx <= 0) {
+        setName(text);
+        return;
+    }
+    setName(text.substring(0, eqIdx));
+    String[] args = tokenizeToStringArray(text.substring(eqIdx+1), ",");
+    for (int i=0; i < args.length; i++) {
+        this.args.put(NameUtils.generateName(i), args[i]); // ①
+    }
+}
+
+// ① 使用到的工具类 NameUtils 源码
+public class NameUtils {
+    public static final String GENERATED_NAME_PREFIX = "_genkey_";
+    public static String generateName(int i) {
+        return GENERATED_NAME_PREFIX + i;
+    }
+}
+```
+
+##### PredicateDefinition
+
+同样遵循组件名前缀 + `Definition` 后缀的命名规范，用于定义 Predicate。
+
+```java
+public class PredicateDefinition {
+   // 定义了 Predicate 的名称，它们要符固定的命名规范，为对应的工厂名称前缀
+   private String name;
+	// 一个 Map 类型的参数，构造 Predicate 使用到的键值对参数，格式与FilterDefinition相似
+   private Map<String, String> args = new LinkedHashMap<>();
+}
+```
+
+##### RoutePredicateFactory
+
+RoutePredicateFactory 是所有 predicate factory 的顶级接口，职责就是生产 Predicate。
+
+创建一个用于配置用途的对象（config），以其作为参数应用到 `apply`方法上来生产一个 Predicate 对象，再将 Predicate 对象包装成 AsyncPredicate。
+
+```java
+import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.toAsyncPredicate;
+
+@FunctionalInterface // 声明它是一个函数接口
+public interface RoutePredicateFactory<C> extends ShortcutConfigurable, Configurable<C> { //  扩展了 Configurable 接口，从命名上可以推断 Predicate 工厂是支持配置的
+	// 核心方法，即函数接口的唯一抽象方法，用于生产 Predicate，接收一个范型参数 config
+    Predicate<ServerWebExchange> apply(C config);
+	// 对参数 config 应用工厂方法，并将返回结果 Predicate 包装成 AsyncPredicate。包装成 AsyncPredicate 是为了使用非阻塞模型
+    default AsyncPredicate<ServerWebExchange> applyAsync(C config) {
+        return toAsyncPredicate(apply(config));
+    }
+}
+
+// RoutePredicateFactory 扩展了 Configurable
+public interface Configurable<C> {
+    Class<C> getConfigClass();  // 获取配置类的类型，支持范型，具体的 config 类型由子类指定
+    C newConfig(); // 创建一个 config 实例，由具体的实现类来完成
+}
+```
+
+###### AfterRoutePredicateFactory
+
+`AfterRoutePredicateFactory`是`RoutePredicateFactory`的之类，下面举例说明如何由配置文件生成`Predicate`对象的过程。
+
+- 配置文件
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: after_route
+        uri: http://example.org
+        predicates:
+        - After=2017-01-20T17:42:47.789-07:00[America/Denver] 
+```
+
+- 解析绑定`PredicateDefinition`
+
+```java
+PredicateDefinition {
+    name='After',
+    args={_genkey_0=2017-01-20T17:42:47.789-07:00[America/Denver]}
+}
+```
+
+- `Predicate`对象生成
+
+```java
+public class AfterRoutePredicateFactory extends AbstractRoutePredicateFactory<AfterRoutePredicateFactory.Config> {
+
+    /**
+    * DateTime key.
+    */
+    public static final String DATETIME_KEY = "datetime";
+
+    public AfterRoutePredicateFactory() {
+        super(Config.class);
+    }
+
+    @Override
+    public List<String> shortcutFieldOrder() {
+        return Collections.singletonList(DATETIME_KEY);
+    }
+
+    @Override
+    public Predicate<ServerWebExchange> apply(Config config) {
+        return new GatewayPredicate() {
+            @Override
+            public boolean test(ServerWebExchange serverWebExchange) {
+                final ZonedDateTime now = ZonedDateTime.now();
+                // 执行配置文件时间的判断：2017-01-20T17:42:47.789-07:00[America/Denver] 
+                return now.isAfter(config.getDatetime());
+            }
+
+            @Override
+            public String toString() {
+                return String.format("After: %s", config.getDatetime());
+            }
+        };
+    }
+
+    public static class Config {
+        // 保存配置文件的时间：2017-01-20T17:42:47.789-07:00[America/Denver] 
+        @NotNull
+        private ZonedDateTime datetime;
+
+        public ZonedDateTime getDatetime() {
+            return datetime;
+        }
+
+        public void setDatetime(ZonedDateTime datetime) {
+            this.datetime = datetime;
+        }
+
+    }
+
+}
+```
+
+**引申疑问点：**：
+
+1. PredicateDefinition 对象又是如何转换成 AfterRoutePredicateFactory.Config 对象的？
+2. PredicateDefinition 又是如何生成的呢？
+
+对于第1点，主要涉及 RouteLocator 组件。
+
+##### GatewayFilterFactory
+
+GatewayFilterFactory 职责就是生产 GatewayFilter。
+
+```java
+@FunctionalInterface
+public interface GatewayFilterFactory<C> extends ShortcutConfigurable, Configurable<C> { // 同样继承了 ShortcutConfigurable 和 Configurable 接口，支持配置。
+    String NAME_KEY = "name";
+    String VALUE_KEY = "value";
+
+    GatewayFilter apply(C config); // 核心方法，用于生产 GatewayFilter，接收一个范型参数 config 
+}
+```
+
+##### RouteLocator&RouteDefinitionLocator
+
+```java
+// Route的定位器，获取Route
+public interface RouteLocator {
+	Flux<Route> getRoutes();
+}
+
+// RouteDefinition的定位器，获取RouteDefinition
+public interface RouteDefinitionLocator {
+	Flux<RouteDefinition> getRouteDefinitions();
+}
+```
+
+##### RouteDefinitionRouteLocator
+
+`RouteDefinitionRouteLocator`为`RouteLocator`主要实现类，用于将`RouteDefinition`转换成`Route`。
+
+- 构造器
+
+> 注意：
+>
+> 1、routeDefinitionLocator中的RouteDefinition是定义的routes；
+>
+> 2、GatewayProperties 类中的RouteDefinition，是定义的 default_filters，这会应用到每一个 Route 上.
+
+```java
+public class RouteDefinitionRouteLocator implements RouteLocator, BeanFactoryAware, ApplicationEventPublisherAware {
+	// 一个 RouteDefinitionLocator 对象
+    private final RouteDefinitionLocator routeDefinitionLocator;
+
+    private final ConfigurationService configurationService;
+	// Predicate 工厂列表，会被映射成 key 为 name, value 为 factory 的 Map。对应PredicateDefinition 中定义的 name。
+    private final Map<String, RoutePredicateFactory> predicates = new LinkedHashMap<>();
+	// Gateway Filter 工厂列表，同样会被映射成 key 为 name, value 为 factory 的 Map。对应FilterDefinition中定义的name。
+    private final Map<String, GatewayFilterFactory> gatewayFilterFactories = new HashMap<>();
+	// 外部化配置类
+    private final GatewayProperties gatewayProperties;
+
+    public RouteDefinitionRouteLocator(RouteDefinitionLocator routeDefinitionLocator,
+                                       List<RoutePredicateFactory> predicates,
+                                       List<GatewayFilterFactory> gatewayFilterFactories,
+                                       GatewayProperties gatewayProperties,
+                                       ConfigurationService configurationService) {
+        this.routeDefinitionLocator = routeDefinitionLocator;
+        this.configurationService = configurationService;
+        initFactories(predicates);
+        gatewayFilterFactories.forEach(
+            factory -> this.gatewayFilterFactories.put(factory.name(), factory));
+        this.gatewayProperties = gatewayProperties;
+    }
+}
+```
+
+###### getRoutes
+
+```java
+@Override
+public Flux<Route> getRoutes() {
+    // 调用 convertToRoute 方法将 RouteDefinition 转换成 Route
+    Flux<Route> routes = this.routeDefinitionLocator.getRouteDefinitions()
+        .map(this::convertToRoute);
+
+    if (!gatewayProperties.isFailOnRouteDefinitionError()) {
+        // instead of letting error bubble up, continue
+        routes = routes.onErrorContinue((error, obj) -> {
+            if (logger.isWarnEnabled()) {
+                logger.warn("RouteDefinition id " + ((RouteDefinition) obj).getId()
+                            + " will be ignored. Definition has invalid configs, "
+                            + error.getMessage());
+            }
+        });
+    }
+
+    return routes.map(route -> {
+        if (logger.isDebugEnabled()) {
+            logger.debug("RouteDefinition matched: " + route.getId());
+        }
+        return route;
+    });
+}
+
+// RouteDefinition转成Route
+private Route convertToRoute(RouteDefinition routeDefinition) {
+    //  将 PredicateDefinition 转换成 AsyncPredicate
+    AsyncPredicate<ServerWebExchange> predicate = combinePredicates(routeDefinition);
+    // 将 FilterDefinition 转换成 GatewayFilter
+    List<GatewayFilter> gatewayFilters = getFilters(routeDefinition);
+	// 生成route
+    return Route.async(routeDefinition).asyncPredicate(predicate)
+        .replaceFilters(gatewayFilters).build();
+}
+
+```
+
+###### combinePredicates
+
+从`RouteDefinition`中获取`PredicateDefinition` ，并转换成 `AsyncPredicate`。
+
+```java
+private AsyncPredicate<ServerWebExchange> combinePredicates(RouteDefinition routeDefinition) {
+    List<PredicateDefinition> predicates = routeDefinition.getPredicates();
+    if (predicates == null || predicates.isEmpty()) {
+        // this is a very rare case, but possible, just match all
+        return AsyncPredicate.from(exchange -> true);
+    }
+    
+    // 调用 lookup 方法，将列表中第一个 PredicateDefinition 转换成 AsyncPredicate
+    AsyncPredicate<ServerWebExchange> predicate = lookup(routeDefinition, predicates.get(0));
+
+    for (PredicateDefinition andPredicate : predicates.subList(1, predicates.size())) {
+        // 循环调用，将列表中每一个 PredicateDefinition 都转换成 AsyncPredicate
+        AsyncPredicate<ServerWebExchange> found = lookup(routeDefinition, andPredicate);
+        // 应用and操作，将所有的 AsyncPredicate 组合成一个 AsyncPredicate 对象
+        predicate = predicate.and(found);
+    }
+
+    return predicate;
+}
+```
+
+- lookup
+
+```java
+private AsyncPredicate<ServerWebExchange> lookup(RouteDefinition route, PredicateDefinition predicate) {
+    // 根据 predicate 名称获取对应的 predicate factory
+    RoutePredicateFactory<Object> factory = this.predicates.get(predicate.getName());
+    if (factory == null) {
+        throw new IllegalArgumentException("Unable to find RoutePredicateFactory with name " + predicate.getName());
+    }
+    if (logger.isDebugEnabled()) {
+        logger.debug("RouteDefinition " + route.getId() + " applying " + predicate.getArgs() + " to " + predicate.getName());
+    }
+
+    // @formatter:off
+    // PredicateDefinition的参数绑定到 config 对象上
+    Object config = this.configurationService.with(factory)
+        .name(predicate.getName())
+        .properties(predicate.getArgs()) // 获取 PredicateDefinition 中的 Map 类型参数，key 是固定字符串_genkey_ + 数字拼接而成
+        .eventFunction((bound, properties) -> new PredicateArgsEvent(
+            RouteDefinitionRouteLocator.this, route.getId(), properties))
+        .bind();
+    // @formatter:on
+    //  将 cofing 作参数代入，调用 factory 的 applyAsync 方法创建 AsyncPredicate 对象
+    return factory.applyAsync(config);
+}
+```
+
+###### getFilters
+
+从`RouteDefinition`中获取`Filters` 和从`gatewayProperties`获取`DefaultFilters`，并将其转换成 `GatewayFilter`。
+
+`loadGatewayFilters`为生产filter方法，与生成predicate方法相似。
+
+```java
+private List<GatewayFilter> getFilters(RouteDefinition routeDefinition) {
+   List<GatewayFilter> filters = new ArrayList<>();
+
+   // TODO: support option to apply defaults after route specific filters?
+   // 处理 GatewayProperties 中定义的默认的 FilterDefinition，转换成 GatewayFilter。
+   if (!this.gatewayProperties.getDefaultFilters().isEmpty()) {
+      filters.addAll(loadGatewayFilters(routeDefinition.getId(),
+            new ArrayList<>(this.gatewayProperties.getDefaultFilters())));
+   }
+	// 将 RouteDefinition 中定义的 FilterDefinition 转换成 GatewayFilter
+   if (!routeDefinition.getFilters().isEmpty()) {
+      filters.addAll(loadGatewayFilters(routeDefinition.getId(),
+            new ArrayList<>(routeDefinition.getFilters())));
+   }
+	// 对 GatewayFilter 进行排序，排序的详细逻辑请查阅 spring 中的 Ordered 接口
+   AnnotationAwareOrderComparator.sort(filters);
+   return filters;
+}
+```
+
+
+
+
+
+
+
+
+
 ### AsyncPredicate
 
 Predicate 即 Route 中所定义的部分，用于条件匹配。
