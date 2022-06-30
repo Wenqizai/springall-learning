@@ -18,6 +18,8 @@ Spring Cloud Gateway 是基于 `Spring 5.0`、`Spring Boot 2.0` 、`project reac
 
 <img src="spring-gateway.assets/spring-gateway工作流程.png" alt="spring gateway工作流程" style="zoom: 80%;" />
 
+![gateway请求流程](spring-gateway.assets/gateway%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B.png)
+
 1. 客户端将请求发送到Gateway上；
 2. Gateway通过Gateway Handler Mapping找到请求相匹配的路由，将其发送到对应的Gateway Web Handler；
 3. Gateway Web Handler通过指定的过滤器链（Filter Chain），将请求转发到实际的服务节点中，执行业务逻辑返回响应结果；
@@ -426,7 +428,7 @@ public class RouteDefinition {
     private URI uri;
 	// 定义元数据
     private Map<String, Object> metadata = new HashMap<>();
-	// 定义 Route 的序号
+	// 定义 Route 的顺序
     private int order = 0;
 }
 ```
@@ -913,23 +915,155 @@ private static class DefaultGatewayFilterChain implements GatewayFilterChain {
 }
 ```
 
+## 路由
 
+### RouteDefinitionLocator
 
+负责读取路由配置，转换成RouteDefintion
 
+```java
+public interface RouteDefinitionLocator {
+   Flux<RouteDefinition> getRouteDefinitions();
+}
+```
 
+![RouteDefinitionLocator组装生成](spring-gateway.assets/RouteDefinitionLocator组装生成.png)
 
+- 实现类
 
+`PropertiesRouteDefinitionLocator`：从配置文件中读取，如yml、properties等；
 
+`RouteDefinitionRepository`：从存储器中读取，如内存、Redis、MySQL等；
 
+`DiscoveryClientRouteDefinitionLocator`：从注册中心读取；
 
+`CompositeRouteDefinitionLocator`：组合多种RouteDefinitionLocator实现，为RouteDefinitionLocator提供统一的入口。
 
+![RouteDefinitionLocator-实现类](spring-gateway.assets/RouteDefinitionLocator-实现类.png)
 
+#### RouteDefinition
 
+- 构造器
 
+```java
+// 可以通过 text 来创建RouteDefinition
+// text格式：${id}=${uri},${predicates[0]},${predicates[1]}...${predicates[n]}
+// 	   例如: route001=http://127.0.0.1,Host=**.addrequestparameter.org,Path=/get
+public RouteDefinition(String text) {
+   int eqIdx = text.indexOf('=');
+   if (eqIdx <= 0) {
+      throw new ValidationException("Unable to parse RouteDefinition text '" + text
+            + "'" + ", must be of the form name=value");
+   }
 
+   setId(text.substring(0, eqIdx));
 
+   String[] args = tokenizeToStringArray(text.substring(eqIdx + 1), ",");
 
+   setUri(URI.create(args[0]));
 
+   for (int i = 1; i < args.length; i++) {
+      this.predicates.add(new PredicateDefinition(args[i]));
+   }
+}
+```
+
+#### PredicateDefinition
+
+- 构造器
+
+```java
+// 可以通过 text 来创建PredicateDefinition
+// text格式：${name}=${args[0]},${args[1]}...${args[n]}
+// 	   例如:  Host=iocoder.cn
+public PredicateDefinition(String text) {
+   int eqIdx = text.indexOf('=');
+   if (eqIdx <= 0) {
+      throw new ValidationException("Unable to parse PredicateDefinition text '"
+            + text + "'" + ", must be of the form name=value");
+   }
+   setName(text.substring(0, eqIdx));
+
+   String[] args = tokenizeToStringArray(text.substring(eqIdx + 1), ",");
+
+   for (int i = 0; i < args.length; i++) {
+      this.args.put(NameUtils.generateName(i), args[i]);
+   }
+}
+```
+
+#### FilterDefinition
+
+- 构造器
+
+```java
+// 可以通过 text 来创建FilterDefinition
+// text 格式 ${name}=${args[0]},${args[1]}...${args[n]}
+// 	   例如: AddRequestParameter=foo, bar
+public FilterDefinition(String text) {
+   int eqIdx = text.indexOf('=');
+   if (eqIdx <= 0) {
+      setName(text);
+      return;
+   }
+   setName(text.substring(0, eqIdx));
+
+   String[] args = tokenizeToStringArray(text.substring(eqIdx + 1), ",");
+
+   for (int i = 0; i < args.length; i++) {
+      this.args.put(NameUtils.generateName(i), args[i]);
+   }
+}
+```
+
+#### CompositeRouteDefinitionLocator
+
+`org.springframework.cloud.gateway.route.CompositeRouteDefinitionLocator` ，组合多种RouteDefinitionLocator 的实现，为 RouteDefinitionRouteLocator 提供统一入口。
+
+`getRouteDefinitions`会提供统一方法，将组合的 `delegates` 的路由定义全部返回。
+
+```java
+public class CompositeRouteDefinitionLocator implements RouteDefinitionLocator {
+    // RouteDefinitionLocator数组
+    private final Flux<RouteDefinitionLocator> delegates;
+    private final IdGenerator idGenerator;
+	// 注入RouteDefinitionLocator
+    public CompositeRouteDefinitionLocator(Flux<RouteDefinitionLocator> delegates) {
+        this(delegates, new AlternativeJdkIdGenerator());
+    }
+
+    public CompositeRouteDefinitionLocator(Flux<RouteDefinitionLocator> delegates,
+                                           IdGenerator idGenerator) {
+        this.delegates = delegates;
+        this.idGenerator = idGenerator;
+    }
+
+    // 汇聚所有的RouteDefinitionLocator，返回RouteDefinition
+    @Override
+    public Flux<RouteDefinition> getRouteDefinitions() {
+        return this.delegates
+            .flatMapSequential(RouteDefinitionLocator::getRouteDefinitions)
+            .flatMap(routeDefinition -> {
+                if (routeDefinition.getId() == null) {
+                    return randomId().map(id -> {
+                        routeDefinition.setId(id);
+                        if (log.isDebugEnabled()) {
+                            log.debug(
+                                "Id set on route definition: " + routeDefinition);
+                        }
+                        return routeDefinition;
+                    });
+                }
+                return Mono.just(routeDefinition);
+            });
+    }
+
+    protected Mono<String> randomId() {
+        return Mono.fromSupplier(idGenerator::toString)
+            .publishOn(Schedulers.boundedElastic());
+    }
+}
+```
 
 
 
