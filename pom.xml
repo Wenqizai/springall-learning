@@ -10,6 +10,9 @@
     <version>1.0-SNAPSHOT</version>
     <modules>
         <module>springcloud</module>
+        <module>spring-cloud-eureka</module>
+        <module>source/spring-cloud-eureka</module>
+        <module>springcloud/spring-could-eureka-demo</module>
     </modules>
 
     <parent>

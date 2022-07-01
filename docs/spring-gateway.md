@@ -917,6 +917,8 @@ private static class DefaultGatewayFilterChain implements GatewayFilterChain {
 
 ## 路由
 
+![RouteDefinitionLocator组装生成](spring-gateway.assets/RouteDefinitionLocator组装生成.png)
+
 ### RouteDefinitionLocator
 
 负责读取路由配置，转换成RouteDefintion
@@ -926,8 +928,6 @@ public interface RouteDefinitionLocator {
    Flux<RouteDefinition> getRouteDefinitions();
 }
 ```
-
-![RouteDefinitionLocator组装生成](spring-gateway.assets/RouteDefinitionLocator组装生成.png)
 
 - 实现类
 
@@ -1064,6 +1064,239 @@ public class CompositeRouteDefinitionLocator implements RouteDefinitionLocator {
     }
 }
 ```
+
+#### PropertiesRouteDefinitionLocator
+
+从配置文件( 例如，YML / Properties 等 ) 读取路由配置。
+
+```java
+public class PropertiesRouteDefinitionLocator implements RouteDefinitionLocator {
+    private final GatewayProperties properties;
+    public PropertiesRouteDefinitionLocator(GatewayProperties properties) {
+        this.properties = properties;
+    }
+    // 从GatewayProperties中获取RouteDefinition
+    @Override
+    public Flux<RouteDefinition> getRouteDefinitions() {
+        return Flux.fromIterable(this.properties.getRoutes());
+    }
+}
+```
+
+#### **RouteDefinitionRepository** 
+
+我们通过实现该接口，实现从**存储器**( 例如，内存 / Redis / MySQL 等 )读取、保存、删除路由配置。
+
+目前 Spring Cloud Gateway 实现了**基于内存为存储器**的 InMemoryRouteDefinitionRepository ，内存级别，服务重启后配置消失。
+
+换言之，我们可以通过实现RouteDefinitionRepository，比如MySQLRouteDefinitionRepository 来实现路由配置的可持久化和共享。
+
+```java
+public interface RouteDefinitionRepository extends RouteDefinitionLocator, RouteDefinitionWriter {
+
+}
+
+// 路由配置写入接口。该接口定义了保存与删除两个方法
+public interface RouteDefinitionWriter {
+    /**
+	 * 保存路由配置
+	 * @param route 路由配置
+	 * @return Mono<Void>
+	 */
+    Mono<Void> save(Mono<RouteDefinition> route);
+
+    /**
+	 * 删除路由配置
+	 *
+	 * @param routeId 路由编号
+	 * @return Mono<Void>
+	 */
+    Mono<Void> delete(Mono<String> routeId);
+
+}
+```
+
+- InMemoryRouteDefinitionRepository
+
+```java
+public class InMemoryRouteDefinitionRepository implements RouteDefinitionRepository {
+    // 路由配置Map
+    private final Map<String, RouteDefinition> routes = synchronizedMap(
+        new LinkedHashMap<String, RouteDefinition>());
+
+    // 实现RouteDefinitionWriter的方法，被GatewayWebfluxEndpoint调用，添加路由
+    @Override
+    public Mono<Void> save(Mono<RouteDefinition> route) {
+        return route.flatMap(r -> {
+            if (StringUtils.isEmpty(r.getId())) {
+                return Mono.error(new IllegalArgumentException("id may not be empty"));
+            }
+            routes.put(r.getId(), r);
+            return Mono.empty();
+        });
+    }
+	
+    // // 实现RouteDefinitionWriter的方法，被GatewayWebfluxEndpoint调用，删除路由
+    @Override
+    public Mono<Void> delete(Mono<String> routeId) {
+        return routeId.flatMap(id -> {
+            if (routes.containsKey(id)) {
+                routes.remove(id);
+                return Mono.empty();
+            }
+            return Mono.defer(() -> Mono.error(
+                new NotFoundException("RouteDefinition not found: " + routeId)));
+        });
+    }
+
+    // 实现RouteDefinitionLocator的方法，获取所有的RouteDefinition
+    @Override
+    public Flux<RouteDefinition> getRouteDefinitions() {
+        return Flux.fromIterable(routes.values());
+    }
+
+}
+```
+
+##### MySQLRouteDefinitionRepository
+
+自定义实现MySQLRouteDefinitionRepository ，参考InMemoryRouteDefinitionRepository。
+
+- 创建bean
+
+```java
+public class MySQLRouteDefinitionRepository implements RouteDefinitionRepository {
+    private final Map<String, RouteDefinition> routes = synchronizedMap(
+        new LinkedHashMap<String, RouteDefinition>());
+
+    @Override
+    public Mono<Void> save(Mono<RouteDefinition> route) {
+        return route.flatMap(r -> {
+            if (StringUtils.isEmpty(r.getId())) {
+                return Mono.error(new IllegalArgumentException("id may not be empty"));
+            }
+            routes.put(r.getId(), r);
+            return Mono.empty();
+        });
+    }
+
+    @Override
+    public Mono<Void> delete(Mono<String> routeId) {
+        return routeId.flatMap(id -> {
+            if (routes.containsKey(id)) {
+                routes.remove(id);
+                return Mono.empty();
+            }
+            return Mono.defer(() -> Mono.error(
+                new NotFoundException("RouteDefinition not found: " + routeId)));
+        });
+    }
+
+    @Override
+    public Flux<RouteDefinition> getRouteDefinitions() {
+        return Flux.fromIterable(routes.values());
+    }
+}
+```
+
+- 自动加载Bean
+
+```java
+
+@Bean
+@ConditionalOnMissingBean(RouteDefinitionRepository.class)
+public MySQLRouteDefinitionRepository inMemoryRouteDefinitionRepository() {
+    return new MySQLRouteDefinitionRepository();
+}
+```
+
+### RouteLocator
+
+![RouteLocator](spring-gateway.assets/RouteLocator.png)
+
+#### CompositeRouteLocator
+
+组合多种 `RouteLocator` 的实现类，为 `RoutePredicateHandlerMapping` 提供统一入口访问路由，将组合的 `delegates` 的路由全部返回。
+
+#### CachingRouteLocator
+
+缓存路由的 RouteLocator 实现类。`RoutePredicateHandlerMapping` 调用 `CachingRouteLocator` 的 `RouteLocator#getRoutes()` 方法，获取路由。
+
+```java
+// 从applicationEventPublisher监听事件，事件发生则放到cache里面
+@Override
+public void onApplicationEvent(RefreshRoutesEvent event) {
+   try {
+      fetch().collect(Collectors.toList()).subscribe(list -> Flux.fromIterable(list)
+            .materialize().collect(Collectors.toList()).subscribe(signals -> {
+               applicationEventPublisher.publishEvent(new RefreshRoutesResultEvent(this));
+               cache.put(CACHE_KEY, signals);
+            }, throwable -> handleRefreshError(throwable)));
+   }
+   catch (Throwable e) {
+      handleRefreshError(e);
+   }
+}
+
+private void handleRefreshError(Throwable throwable) {
+   if (log.isErrorEnabled()) {
+      log.error("Refresh routes error !!!", throwable);
+   }
+   applicationEventPublisher
+         .publishEvent(new RefreshRoutesResultEvent(this, throwable));
+}
+```
+
+`GatewayWebfluxEndpoint` 有一个 HTTP API 调用了 `ApplicationEventPublisher` ，发布 `RefreshRoutesEvent` 事件。
+
+```java
+@RestController
+@RequestMapping("${management.context-path:/application}/gateway")
+public class GatewayWebfluxEndpoint implements ApplicationEventPublisherAware {
+    
+    /**
+    * 应用事件发布器
+    */
+    private ApplicationEventPublisher publisher;
+	
+    @PostMapping("/refresh")
+    public Mono<Void> refresh() {
+        this.publisher.publishEvent(new RefreshRoutesEvent(this));
+        return Mono.empty();
+    }
+
+}
+```
+
+#### RouteDefinitionRouteLocator
+
+
+
+![RouteDefinitionRouteLocator-工作流程](spring-gateway.assets/RouteDefinitionRouteLocator-工作流程.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
