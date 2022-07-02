@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: gateway-demo
+
+eureka:
+  instance:
+    leaseRenewalIntervalInSeconds: 10
+    leaseExpirationDurationInSeconds: 30
+  client:
+    serviceUrl:
+      defaultZone: http://eureka.demo.com/eureka/

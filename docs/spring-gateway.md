@@ -1274,6 +1274,259 @@ public class GatewayWebfluxEndpoint implements ApplicationEventPublisherAware {
 
 ![RouteDefinitionRouteLocator-工作流程](spring-gateway.assets/RouteDefinitionRouteLocator-工作流程.png)
 
+## 处理器
+
+### RoutePredicateFactory
+
+**工厂类：**路由谓语工厂接口，所有创建`Predicate`的工厂类都是继承实现该接口。其中`name()`方法是截取工厂类的名字，如我们经常在yml配置的`Host`、`Before`、`Between`、`Header`、`Method`等等，就是出自这里。
+
+```java
+@FunctionalInterface
+public interface RoutePredicateFactory<C> extends ShortcutConfigurable, Configurable<C> {
+
+  /**
+    * Pattern key.
+    */
+  String PATTERN_KEY = "pattern";
+
+  // 创建Predicate，阻塞方式
+  // useful for javadsl
+  default Predicate<ServerWebExchange> apply(Consumer<C> consumer) {
+    C config = newConfig();
+    consumer.accept(config);
+    beforeApply(config);
+    return apply(config);
+  }
+
+  // 创建Predicate，非阻塞方式
+  default AsyncPredicate<ServerWebExchange> applyAsync(Consumer<C> consumer) {
+    C config = newConfig();
+    consumer.accept(config);
+    beforeApply(config);
+    return applyAsync(config);
+  }
+
+  default Class<C> getConfigClass() {
+    throw new UnsupportedOperationException("getConfigClass() not implemented");
+  }
+
+  @Override
+  default C newConfig() {
+    throw new UnsupportedOperationException("newConfig() not implemented");
+  }
+
+  default void beforeApply(C config) {
+  }
+
+  // 这里会好奇config是如何产生的？具体可以参看RouteDefinitionRouteLocator组成生成Route的过程
+  // org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator#lookup，此方法就会把PredicateDefinition经RoutePredicateFactory
+  // 最终生成Predicate，也就生成了Config了。
+  Predicate<ServerWebExchange> apply(C config);
+
+  default AsyncPredicate<ServerWebExchange> applyAsync(C config) {
+    return toAsyncPredicate(apply(config));
+  }
+
+  // 默认方法，调用 NameUtils#normalizePredicateName(Class) 方法，获得 RoutePredicateFactory 的名字。该方法截取类名前半段
+  // QueryRoutePredicateFactory 的结果为 Query
+  default String name() {
+    return NameUtils.normalizeRoutePredicateName(getClass());
+  }
+
+}
+```
+
+<img src="spring-gateway.assets/RoutePredicateFactory-实现类.png" alt="RoutePredicateFactory-实现类.png" style="zoom:50%;" />
+
+### RoutePredicateHandlerMapping
+
+负责路由匹配。
+
+<img src="spring-gateway.assets/gateway请求流程-职责类.png" alt="gateway请求流程-职责类.png" style="zoom:50%;" />
+
+- `org.springframework.web.reactive.DispatcherHandler` ：接收到请求，匹配 HandlerMapping ，此处会匹配到 RoutePredicateHandlerMapping 。
+
+- `org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping` ：接收到请求，匹配 Route 。
+- `org.springframework.cloud.gateway.handler.FilteringWebHandler` ：获得 Route 的 GatewayFilter 数组，创建 GatewayFilterChain 处理请求。
+
+#### DispatcherHandler
+
+请求分发器，职责类似Spring MVC中的DispatcherServlet。
+
+```java
+public class DispatcherHandler implements WebHandler, ApplicationContextAware {
+
+  @Nullable
+  private List<HandlerMapping> handlerMappings;
+
+  @Nullable
+  private List<HandlerAdapter> handlerAdapters;
+
+  // 请求处理方法
+  @Override
+  public Mono<Void> handle(ServerWebExchange exchange) {
+    if (this.handlerMappings == null) {
+      return createNotFoundError();
+    }
+    return Flux.fromIterable(this.handlerMappings)	// 获取所有的handlerMappings
+      .concatMap(mapping -> mapping.getHandler(exchange))	// 匹配Handler
+      .next()
+      .switchIfEmpty(createNotFoundError())
+      .flatMap(handler -> invokeHandler(exchange, handler)) // 执行handlerAdpter.handle，如果匹配
+      .flatMap(result -> handleResult(exchange, result));	// 处理handlerAdpter的执行结果
+  }
+
+  
+	// HandlerAdpter处理方法：根据支持的HandlerAdpter，执行handle方法
+  private Mono<HandlerResult> invokeHandler(ServerWebExchange exchange, Object handler) {
+    if (this.handlerAdapters != null) {
+      for (HandlerAdapter handlerAdapter : this.handlerAdapters) {
+        if (handlerAdapter.supports(handler)) {
+          return handlerAdapter.handle(exchange, handler);
+        }
+      }
+    }
+    return Mono.error(new IllegalStateException("No HandlerAdapter: " + handler));
+  }
+
+}
+```
+
+![DispatcherHandler-工作流程](spring-gateway.assets/DispatcherHandler-工作流程.png)
+
+#### RoutePredicateHandlerMapping
+
+```java
+public class RoutePredicateHandlerMapping extends AbstractHandlerMapping {
+
+  private final FilteringWebHandler webHandler;
+
+  private final RouteLocator routeLocator;
+
+  // 构造器
+  public RoutePredicateHandlerMapping(FilteringWebHandler webHandler,
+                                      RouteLocator routeLocator, GlobalCorsProperties globalCorsProperties,
+                                      Environment environment) {
+    this.webHandler = webHandler;
+    this.routeLocator = routeLocator;
+    this.managementPort = getPortProperty(environment, "management.server.");
+    this.managementPortType = getManagementPortType(environment);
+    setOrder(1);	// order == 1, 在RequestMappingHandlerMapping 之后
+    setCorsConfigurations(globalCorsProperties.getCorsConfigurations());
+  }
+
+  @Override
+  protected Mono<?> getHandlerInternal(ServerWebExchange exchange) {
+    // don't handle requests on management port if set and different than server port
+    if (this.managementPortType == DIFFERENT && this.managementPort != null
+        && exchange.getRequest().getURI().getPort() == this.managementPort) {
+      return Mono.empty();
+    }
+    // 设置 GATEWAY_HANDLER_MAPPER_ATTR 为 RoutePredicateHandlerMapping
+    exchange.getAttributes().put(GATEWAY_HANDLER_MAPPER_ATTR, getSimpleName());
+
+    return lookupRoute(exchange)	// 匹配Route
+      // .log("route-predicate-handler-mapping", Level.FINER) //name this
+      .flatMap((Function<Route, Mono<?>>) r -> {	// 返回 FilteringWebHandler
+        exchange.getAttributes().remove(GATEWAY_PREDICATE_ROUTE_ATTR);
+        if (logger.isDebugEnabled()) {
+          logger.debug("Mapping [" + getExchangeDesc(exchange) + "] to " + r);
+        }
+ 				// 设置 GATEWAY_ROUTE_ATTR 为 匹配的 Route
+        exchange.getAttributes().put(GATEWAY_ROUTE_ATTR, r);
+        // 返回FilteringWebHandler（FilteringWebHandler构建器注入）
+        return Mono.just(webHandler);
+      }).switchIfEmpty(Mono.empty().then(Mono.fromRunnable(() -> { // 匹配不到 Route
+      exchange.getAttributes().remove(GATEWAY_PREDICATE_ROUTE_ATTR);
+      if (logger.isTraceEnabled()) {
+        logger.trace("No RouteDefinition found for ["+ getExchangeDesc(exchange) + "]");
+      }
+    })));
+  }
+  
+  
+  // 匹配路由
+  protected Mono<Route> lookupRoute(ServerWebExchange exchange) {
+    // 获取全部Route，逐一匹配
+    return this.routeLocator.getRoutes()
+      // individually filter routes so that filterWhen error delaying is not a
+      // problem
+      .concatMap(route -> Mono.just(route).filterWhen(r -> {
+        // add the current route we are testing
+        exchange.getAttributes().put(GATEWAY_PREDICATE_ROUTE_ATTR, r.getId());
+        return r.getPredicate().apply(exchange);
+      })
+                 // instead of immediately stopping main flux due to error, log and
+                 // swallow it
+                 .doOnError(e -> logger.error(
+                   "Error applying predicate for route: " + route.getId(),
+                   e))
+                 .onErrorResume(e -> Mono.empty()))
+      // .defaultIfEmpty() put a static Route not found
+      // or .switchIfEmpty()
+      // .switchIfEmpty(Mono.<Route>empty().log("noroute"))
+      .next()
+      // TODO: error handling
+      .map(route -> {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Route matched: " + route.getId());
+        }
+        validateRoute(route, exchange);
+        return route;
+      });
+  }
+}
+```
+
+#### FilteringWebHandler
+
+```java
+public class FilteringWebHandler implements WebHandler {
+	// 全局过滤器
+  private final List<GatewayFilter> globalFilters;
+
+  public FilteringWebHandler(List<GlobalFilter> globalFilters) {
+    this.globalFilters = loadFilters(globalFilters);
+  }
+
+  @Override
+  public Mono<Void> handle(ServerWebExchange exchange) {
+    // 根据GATEWAY_ROUTE_ATTR（查找Route时put），获取Route
+    Route route = exchange.getRequiredAttribute(GATEWAY_ROUTE_ATTR);
+    // 根据route来获取GatewayFilter（Route特有）
+    List<GatewayFilter> gatewayFilters = route.getFilters();
+    // 添加到list，包括全局的
+    List<GatewayFilter> combined = new ArrayList<>(this.globalFilters);
+    combined.addAll(gatewayFilters);
+    // TODO: needed or cached?
+    // 排序
+    AnnotationAwareOrderComparator.sort(combined);
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("Sorted gatewayFilterFactories: " + combined);
+    }
+		// 创建DefaultGatewayFilterChain
+    return new DefaultGatewayFilterChain(combined).filter(exchange);
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
