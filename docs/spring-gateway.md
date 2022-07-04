@@ -1511,6 +1511,169 @@ public class FilteringWebHandler implements WebHandler {
 }
 ```
 
+## 过滤器
+
+![gateway-filter类](spring-gateway.assets/gateway-filter类.png)
+
+### GatewayFilter
+
+网关过滤器接口。
+
+```java
+public interface GatewayFilter extends ShortcutConfigurable {
+
+   /**
+    * Process the Web request and (optionally) delegate to the next {@code WebFilter}
+    * through the given {@link GatewayFilterChain}.
+    * @param exchange the current server exchange
+    * @param chain provides a way to delegate to the next filter
+    * @return {@code Mono<Void>} to indicate when request processing is complete
+    */
+   Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain);
+
+}
+```
+
+### GatewayFilterFactory
+
+每个 GatewayFilterFactory 实现类的 `apply()` 方法里，都声明了一个实现 GatewayFilter 的内部类。
+
+```java
+public class AddRequestHeaderGatewayFilterFactory
+      extends AbstractNameValueGatewayFilterFactory {
+
+   @Override
+   public GatewayFilter apply(NameValueConfig config) {
+      return new GatewayFilter() {
+         @Override
+         public Mono<Void> filter(ServerWebExchange exchange,
+               GatewayFilterChain chain) {
+            String value = ServerWebExchangeUtils.expand(exchange, config.getValue());
+            ServerHttpRequest request = exchange.getRequest().mutate()
+                  .headers(httpHeaders -> httpHeaders.add(config.getName(), value))
+                  .build();
+
+            return chain.filter(exchange.mutate().request(request).build());
+         }
+
+         @Override
+         public String toString() {
+            return filterToStringCreator(AddRequestHeaderGatewayFilterFactory.this)
+                  .append(config.getName(), config.getValue()).toString();
+         }
+      };
+   }
+
+}
+```
+
+### OrderedGatewayFilter
+
+**有序的**网关过滤器**实现类**。在 FilterChain 里，过滤器数组首先会按照 `order` 升序排序，按照**顺序**过滤请求
+
+### GatewayFilterAdapter
+
+网关过滤器适配器。在 GatewayFilterChain 使用 GatewayFilter 过滤请求，所以通过 GatewayFilterAdapter 将 GlobalFilter 适配成 GatewayFilter 。
+
+GlobalFilter转GatewayFilter方法： `org.springframework.cloud.gateway.handler.FilteringWebHandler#loadFilters`
+
+```java
+public class FilteringWebHandler implements WebHandler {
+    // 全局过滤器
+    private final List<GatewayFilter> globalFilters;
+
+    public FilteringWebHandler(List<GlobalFilter> globalFilters) {
+        this.globalFilters = loadFilters(globalFilters);
+    }
+
+    private static List<GatewayFilter> loadFilters(List<GlobalFilter> filters) {
+        return filters.stream().map(filter -> {
+            GatewayFilterAdapter gatewayFilter = new GatewayFilterAdapter(filter);
+            // 当 GlobalFilter 子类实现了 org.springframework.core.Ordered 接口，再委托一层 OrderedGatewayFilter 。
+            // 这样 AnnotationAwareOrderComparator#sort(List) 方法好排序。
+            if (filter instanceof Ordered) {
+                int order = ((Ordered) filter).getOrder();
+                return new OrderedGatewayFilter(gatewayFilter, order);
+            }
+            // 当 GlobalFilter 子类没有实现了 org.springframework.core.Ordered 接口，
+            // 在 AnnotationAwareOrderComparator#sort(List) 排序时，顺序值为 Integer.MAX_VALUE,
+            // 目前 GlobalFilter 都实现了 org.springframework.core.Ordered 接口。
+            return gatewayFilter;
+        }).collect(Collectors.toList());
+    }
+}
+```
+
+### GlobalFilter
+
+全局过滤器接口，GlobalFilter 会作用到**所有的** Route 上。
+
+- RoutingFilter
+  - NettyRoutingFilter  	               -> 	`-1`
+  - WebClientHttpRoutingFilter  	-> 	`Integer.MAX_VALUE`
+  - WebsocketRoutingFilter  	      -> 	`Integer.MAX_VALUE`
+  - ForwardRoutingFilter  	           -> 	`Integer.MAX_VALUE`
+- 成对的 Filter
+  - NettyRoutingFilter （`-1`） /NettyWriteResponseFilter （`-1`）
+  - WebClientHttpRoutingFilter （`Integer.MAX_VALUE`） / WebClientWriteResponseFilter  （`-1`）
+
+### GatewayFilterChain
+
+网关过滤器链接口。`DefaultGatewayFilterChain`实现了`GatewayFilterChain`，链接所有过滤器，转移执行`filter()`方法。
+
+```java
+private static class DefaultGatewayFilterChain implements GatewayFilterChain {
+
+    private final int index;
+
+    private final List<GatewayFilter> filters;
+
+    DefaultGatewayFilterChain(List<GatewayFilter> filters) {
+        this.filters = filters;
+        this.index = 0;
+    }
+
+    private DefaultGatewayFilterChain(DefaultGatewayFilterChain parent, int index) {
+        this.filters = parent.getFilters();
+        this.index = index;
+    }
+
+    public List<GatewayFilter> getFilters() {
+        return filters;
+    }
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange) {
+        return Mono.defer(() -> {
+            if (this.index < filters.size()) {
+                GatewayFilter filter = filters.get(this.index);
+                DefaultGatewayFilterChain chain = new DefaultGatewayFilterChain(this,
+                                                                                this.index + 1);
+                return filter.filter(exchange, chain);
+            }
+            else {
+                return Mono.empty(); // complete
+            }
+        });
+    }
+
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
