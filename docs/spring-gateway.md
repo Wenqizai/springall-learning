@@ -1534,7 +1534,7 @@ public interface GatewayFilter extends ShortcutConfigurable {
 }
 ```
 
-### GatewayFilterFactory
+#### GatewayFilterFactory
 
 每个 GatewayFilterFactory 实现类的 `apply()` 方法里，都声明了一个实现 GatewayFilter 的内部类。
 
@@ -1567,11 +1567,17 @@ public class AddRequestHeaderGatewayFilterFactory
 }
 ```
 
-### OrderedGatewayFilter
+> GatewayFilterFactory实现类
+
+![image-20220706172632730](spring-gateway.assets/GatewayFilterFactory实现类.png)
+
+
+
+#### OrderedGatewayFilter
 
 **有序的**网关过滤器**实现类**。在 FilterChain 里，过滤器数组首先会按照 `order` 升序排序，按照**顺序**过滤请求
 
-### GatewayFilterAdapter
+#### GatewayFilterAdapter
 
 网关过滤器适配器。在 GatewayFilterChain 使用 GatewayFilter 过滤请求，所以通过 GatewayFilterAdapter 将 GlobalFilter 适配成 GatewayFilter 。
 
