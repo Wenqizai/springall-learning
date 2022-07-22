@@ -13,6 +13,7 @@
         <module>spring-cloud-eureka</module>
         <module>source/spring-cloud-eureka</module>
         <module>springcloud/spring-could-eureka-demo</module>
+        <module>spring-cloud-feign-demo</module>
     </modules>
 
     <parent>
