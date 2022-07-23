@@ -27,12 +27,6 @@ Feign封装HTTP调用流程，面向接口编程，并为很多的HTTP Client做
 
 
 
-- 调用时序图
-
-![image-20220722144750666](Spring-OpenFeign.assets/Feign调用时序图.png)
-
-
-
 > REST声明规范
 
 其中 `Feign` 已经适配了 JAX-RS 1/2 和 Feign 自带的注解规范。`Spring Cloud Open Feign` 进一步适配了 Spring Web MVC 的注解规范。
@@ -72,6 +66,13 @@ github.contributors("openfeign", "some-unknown-project");
 ## 动态代理对象生成
 
 目的：生成Target.type 的代理对象 proxy，这个代理对象就可以像访问普通方法一样发送 Http 请求，其实和 RPC 的 Stub 模型是一样的。了解 proxy 后，其执行过程其实也就一模了然。
+
+
+
+![Feign生成代理对象.png](Spring-OpenFeign.assets/Feign生成代理对象.png)
+
+
+
 
 - 生成动态代理对象的核心方法：
 
@@ -212,6 +213,159 @@ public Map<String, MethodHandler> apply(Target key) {
                factory.create(key, md, buildTemplate, options, decoder, errorDecoder));
   }
   return result;
+}
+```
+
+## 调用过程
+
+由上面可知，动态代理对象生成，并绑定了MethodHandler。当代理对象调用方法是就会调用proxy对象的`invoke()`方法，进而完成HTTP调用的过程。
+
+![Feign调用过程](spring-openfeign.assets/Feign调用过程.png)
+
+### FeignInvocationHandler#invoke
+
+动态代理对象的默认实现`feign.ReflectiveFeign.FeignInvocationHandler`。该方法执行的`invoke()`，实际上是委托给`SynchronousMethodHandler#invoke`执行。
+
+```java
+@Override
+public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+  if ("equals".equals(method.getName())) {
+    try {
+      Object otherHandler =
+        args.length > 0 && args[0] != null ? Proxy.getInvocationHandler(args[0]) : null;
+      return equals(otherHandler);
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  } else if ("hashCode".equals(method.getName())) {
+    return hashCode();
+  } else if ("toString".equals(method.getName())) {
+    return toString();
+  }
+  // 委托给MethodHandler执行invoke方法，每个方法都对应一个MethodHandler。
+  // MethodHandler是在生成proxy时存入dispatch，见：InvocationHandler handler = factory.create(target, methodToHandler);
+  return dispatch.get(method).invoke(args);
+}
+```
+
+###  SynchronousMethodHandler#invoke
+
+该方法主要做：发起 http 请求，并根据 retryer 进行重试，具体执行委托给`executeAndDecode()`方法。
+
+```java
+@Override
+public Object invoke(Object[] argv) throws Throwable {
+  // template将argv参数构建成Request
+  RequestTemplate template = buildTemplateFromArgs.create(argv);
+  Options options = findOptions(argv);
+  Retryer retryer = this.retryer.clone();
+  while (true) {
+    try {
+      // 调用client.execute(request, options)
+      return executeAndDecode(template, options);
+    } catch (RetryableException e) {
+      try {
+        // 重试机制
+        retryer.continueOrPropagate(e);
+      } catch (RetryableException th) {
+        Throwable cause = th.getCause();
+        if (propagationPolicy == UNWRAP && cause != null) {
+          throw cause;
+        } else {
+          throw th;
+        }
+      }
+      if (logLevel != Logger.Level.NONE) {
+        logger.logRetry(metadata.configKey(), logLevel);
+      }
+      continue;
+    }
+  }
+}
+```
+
+> executeAndDecode
+
+该方法主要做：一是编码生成Request；二是http请求；三是解码生成Response。
+
+```java
+Object executeAndDecode(RequestTemplate template, Options options) throws Throwable {
+  // 1. 调用拦截器 RequestInterceptor，并根据 template 生成 Request
+  Request request = targetRequest(template);
+
+  if (logLevel != Logger.Level.NONE) {
+    logger.logRequest(metadata.configKey(), logLevel, request);
+  }
+
+  Response response;
+  long start = System.nanoTime();
+  try {
+    // 2. http 请求
+    response = client.execute(request, options);
+  } catch (IOException e) {
+    if (logLevel != Logger.Level.NONE) {
+      logger.logIOException(metadata.configKey(), logLevel, e, elapsedTime(start));
+    }
+    throw errorExecuting(request, e);
+  }
+  long elapsedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+  boolean shouldClose = true;
+  try {
+    if (logLevel != Logger.Level.NONE) {
+      response =
+          logger.logAndRebufferResponse(metadata.configKey(), logLevel, response, elapsedTime);
+    }
+    // 3. response 解码
+    if (Response.class == metadata.returnType()) {
+      if (response.body() == null) {
+        return response;
+      }
+      if (response.body().length() == null ||
+          response.body().length() > MAX_RESPONSE_BUFFER_SIZE) {
+        shouldClose = false;
+        return response;
+      }
+      // Ensure the response body is disconnected
+      byte[] bodyData = Util.toByteArray(response.body().asInputStream());
+      return response.toBuilder().body(bodyData).build();
+    }
+    if (response.status() >= 200 && response.status() < 300) {
+      if (void.class == metadata.returnType()) {
+        return null;
+      } else {
+        Object result = decode(response);
+        shouldClose = closeAfterDecode;
+        return result;
+      }
+    } else if (decode404 && response.status() == 404 && void.class != metadata.returnType()) {
+      Object result = decode(response);
+      shouldClose = closeAfterDecode;
+      return result;
+    } else {
+      throw errorDecoder.decode(metadata.configKey(), response);
+    }
+  } catch (IOException e) {
+    if (logLevel != Logger.Level.NONE) {
+      logger.logIOException(metadata.configKey(), logLevel, e, elapsedTime);
+    }
+    throw errorReading(request, response, e);
+  } finally {
+    if (shouldClose) {
+      ensureClosed(response.body());
+    }
+  }
+}
+```
+
+> targetRequest
+
+```java
+Request targetRequest(RequestTemplate template) {
+  for (RequestInterceptor interceptor : requestInterceptors) {
+    interceptor.apply(template);
+  }
+  return target.apply(template);
 }
 ```
 
