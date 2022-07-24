@@ -1,3 +1,5 @@
+# OpenFeign
+
 ## About
 
 - 官方文档
@@ -369,15 +371,371 @@ Request targetRequest(RequestTemplate template) {
 }
 ```
 
+### 引申Ribbon/Hystrix
+
+> RibbonClient
+
+Ribbon负载均衡实现是，创建RibbonClient，`client.excute()`时确定负载均衡。
+
+```java
+Feign.builder().client(RibbonClient.create()).target(Target.class,  url);
+```
+
+负载均衡：`feign.ribbon.RibbonClient#execute`
 
 
-**Note**
 
-1. 每个类的作用，如：ParseHandlersByName
+> HystrixClient
 
+Hystrix限流降级实现是，feign调用时，即代理对象执行`invoke()`时，进行限流和降级。
 
+创建HystrixClient：`feign.hystrix.HystrixFeign.Builder#target(java.lang.Class<T>, java.lang.String, feign.hystrix.FallbackFactory<? extends T>)`
 
+限流与降级：`feign.hystrix.HystrixInvocationHandler#invoke`
 
+## Contract
+
+Contract用来解析方法的参数，并解析为 Http 的请求行、请求头、请求体，生成MethodMetadata信息，其作用是用来==适配Feign、JAX-RS 1/2 、Spring MVC的 REST 声明式注解==。
+
+### 工作流程
+
+![Feign解析生成Metadata工作流](spring-openfeign.assets/Feign解析生成Metadata工作流.png)
+
+前两步是 `Feign` 代理生成阶段，解析方法参数及注解元信息。后三步是调用阶段，将方法参数编码成 Http 请求的数据格式。
+
+- contract提供解析MethodMeatadata的方法
+
+```java
+public interface Contract {
+  /**
+   * Called to parse the methods in the class that are linked to HTTP requests.
+   *
+   * @param targetType {@link feign.Target#type() type} of the Feign interface.
+   */
+  // TODO: break this and correct spelling at some point
+  List<MethodMetadata> parseAndValidatateMetadata(Class<?> targetType);
+}
+
+public final class MethodMetadata implements Serializable {
+
+  private static final long serialVersionUID = 1L;
+  private String configKey; 					// 方法签名，类全限名+方法全限名
+  private transient Type returnType;	// 方法返回值类型
+  private Integer urlIndex;					// 方法参数为url时，为 urlIndex
+  private Integer bodyIndex;				// 方法参数没有任务注解，默认为 bodyIndex
+  private Integer headerMapIndex;		// @HeaderMap
+  private Integer queryMapIndex;		// @QueryMap
+  private boolean queryMapEncoded;
+  private transient Type bodyType;
+  // 初始化了RequestTemplate
+  private RequestTemplate template = new RequestTemplate();	// 核心
+  private List<String> formParams = new ArrayList<String>();
+  private Map<Integer, Collection<String>> indexToName = new LinkedHashMap<Integer, Collection<String>>();
+  private Map<Integer, Class<? extends Expander>> indexToExpanderClass = new LinkedHashMap<Integer, Class<? extends Expander>>();
+  private Map<Integer, Boolean> indexToEncoded = new LinkedHashMap<Integer, Boolean>();
+  private transient Map<Integer, Expander> indexToExpander;
+}
+```
+
+- RequestTemplate创建Request
+
+ RequestTemplate创建Request 后就可以供 `Client#execute()` 调用发送 Http 请求。
+
+```java
+public final class RequestTemplate implements Serializable {
+  /**
+   * Creates a {@link Request} from this template. The template must be resolved before calling this
+   * method, or an {@link IllegalStateException} will be thrown.
+   *
+   * @return a new Request instance.
+   * @throws IllegalStateException if this template has not been resolved.
+   */
+  public Request request() {
+    if (!this.resolved) {
+      throw new IllegalStateException("template has not been resolved.");
+    }
+    return Request.create(this.method, this.url(), this.headers(), this.requestBody());
+  }
+}
+
+public interface Client {
+    Response execute(Request request, Options options) throws IOException;
+}
+```
+
+组装真正发起调用的RequestTemplate，解析Metadata创建的RequestTemplate的属性值，会转移到本次创建的RequestTemplate。
+
+`feign.ReflectiveFeign.BuildTemplateByResolvingArgs#create`
+
+```java
+public RequestTemplate create(Object[] argv) {
+  // 从metadata.template()获取属性，metadata.template的属性值在解析Metadata时已经赋值
+  RequestTemplate mutable = RequestTemplate.from(metadata.template());
+  
+  // 1. 解析url参数
+  if (metadata.urlIndex() != null) {
+    int urlIndex = metadata.urlIndex();
+    checkArgument(argv[urlIndex] != null, "URI parameter %s was null", urlIndex);
+    mutable.target(String.valueOf(argv[urlIndex]));
+  }
+  
+  // 2. 解析参数argv成对应的对象
+  Map<String, Object> varBuilder = new LinkedHashMap<String, Object>();
+  for (Entry<Integer, Collection<String>> entry : metadata.indexToName().entrySet()) {
+    int i = entry.getKey();
+    Object value = argv[entry.getKey()];
+    if (value != null) { // Null values are skipped.
+      if (indexToExpander.containsKey(i)) {
+        value = expandElements(indexToExpander.get(i), value);
+      }
+      for (String name : entry.getValue()) {
+        varBuilder.put(name, value);
+      }
+    }
+  }
+
+  // 3. @Body中的参数占位符
+  RequestTemplate template = resolve(argv, mutable, varBuilder);
+  
+  // 4. @QueryMap
+  if (metadata.queryMapIndex() != null) {
+    // add query map parameters after initial resolve so that they take
+    // precedence over any predefined values
+    Object value = argv[metadata.queryMapIndex()];
+    Map<String, Object> queryMap = toQueryMap(value);
+    template = addQueryMapQueryParameters(queryMap, template);
+  }
+
+  // 5. @HeaderMap
+  if (metadata.headerMapIndex() != null) {
+    template = addHeaderMapHeaders((Map<String, Object>) argv[metadata.headerMapIndex()], template);
+  }
+
+  return template;
+}
+```
+
+### Metadata解析
+
+![Feign-Metadata解析流程.png](spring-openfeign.assets/Feign-Metadata解析流程.png)
+
+|  Feign 注解  |           MethodMetadata 中解析值            |
+| :----------: | :------------------------------------------: |
+|   @Headers   |           data.template().headers            |
+| @RequestLine | data.template().method + data.template().uri |
+|    @Body     |             data.template().body             |
+|    @Param    |               data.indexToName               |
+|  @QueryMap   |              data.queryMapIndex              |
+|  @HeaderMap  |             data.headerMapIndex              |
+
+#### parseAndValidatateMetadata
+
+> 举个例子
+
+```java
+@Headers("Content-Type: application/json")
+interface UserService {
+    @RequestLine("POST /user")
+    @Headers("Content-Type: application/json")
+    @Body("%7B\"user_name\": \"{user_name}\", \"password\": \"{password}\"%7D")
+    void user(@Param("user_name") String name, @Param("password") String password, 
+              @QueryMap Map<String, Object> queryMap, 
+              @HeaderMap Map<String, Object> headerMap, User user);
+}
+```
+
+`parseAndValidatateMetadata` 作用：遍历解析 UserService 中的每个方法，按接口类上、方法上、参数上的注解，将其解析成 MethodMetadata。
+
+主要注解：`@RequestLine` 、`@Headers` 、`@Body`、 `@Param`、 `@HeaderMap` 、`@QueryMap`
+
+> 源码
+
+feign默认的Metadata解析：`feign.Contract.BaseContract#parseAndValidatateMetadata(java.lang.Class<?>)`
+
+```java
+protected MethodMetadata parseAndValidateMetadata(Class<?> targetType, Method method) {
+  MethodMetadata data = new MethodMetadata();
+  data.returnType(Types.resolve(targetType, targetType, method.getGenericReturnType()));
+  data.configKey(Feign.configKey(targetType, method));
+
+  // 1. 解析类上的注解
+  if (targetType.getInterfaces().length == 1) {
+    processAnnotationOnClass(data, targetType.getInterfaces()[0]);
+  }
+  processAnnotationOnClass(data, targetType);
+
+  // 2. 解析方法上的注解
+  for (Annotation methodAnnotation : method.getAnnotations()) {
+    processAnnotationOnMethod(data, methodAnnotation, method);
+  }
+  checkState(data.template().method() != null,
+             "Method %s not annotated with HTTP method type (ex. GET, POST)",
+             method.getName());
+  Class<?>[] parameterTypes = method.getParameterTypes();
+  Type[] genericParameterTypes = method.getGenericParameterTypes();
+
+  Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+  int count = parameterAnnotations.length;
+  for (int i = 0; i < count; i++) {
+    // isHttpAnnotation 表示参数上是否有注解存在
+    boolean isHttpAnnotation = false;
+    if (parameterAnnotations[i] != null) {
+      isHttpAnnotation = processAnnotationsOnParameter(data, parameterAnnotations[i], i);
+    }
+    // 方法参数上不存在注解
+    if (parameterTypes[i] == URI.class) {
+      data.urlIndex(i);
+    } else if (!isHttpAnnotation && parameterTypes[i] != Request.Options.class) {
+      // 已经设置过 @FormParam JAX-RS规范
+      checkState(data.formParams().isEmpty(), "Body parameters cannot be used with form parameters.");
+      
+      // 已经设置过 bodyIndex，如 user(User user1, Person person)
+      checkState(data.bodyIndex() == null, "Method has too many Body parameters: %s", method);
+      
+      data.bodyIndex(i);
+      data.bodyType(Types.resolve(targetType, targetType, genericParameterTypes[i]));
+    }
+  }
+
+  if (data.headerMapIndex() != null) {
+    checkMapString("HeaderMap", parameterTypes[data.headerMapIndex()],
+                   genericParameterTypes[data.headerMapIndex()]);
+  }
+
+  if (data.queryMapIndex() != null) {
+    if (Map.class.isAssignableFrom(parameterTypes[data.queryMapIndex()])) {
+      checkMapKeys("QueryMap", genericParameterTypes[data.queryMapIndex()]);
+    }
+  }
+
+  return data;
+}
+```
+
+#### processAnnotationOnClass
+
+类上只有一个注解：`@Headers -> data.template().headers`
+
+```java
+protected void processAnnotationOnClass(MethodMetadata data, Class<?> targetType) {
+  if (targetType.isAnnotationPresent(Headers.class)) {
+    String[] headersOnType = targetType.getAnnotation(Headers.class).value();
+    checkState(headersOnType.length > 0, "Headers annotation was empty on type %s.",
+        targetType.getName());
+    Map<String, Collection<String>> headers = toMap(headersOnType);
+    headers.putAll(data.template().headers());
+    data.template().headers(null); // to clear
+    data.template().headers(headers);
+  }
+}
+```
+
+#### processAnnotationOnMethod
+
+ 方法上可能有三个注解：
+
+1. `@RequestLine -> data.template().method + data.template().uri`
+2. `@Body -> data.template().body`
+3. `@Headers -> data.template().headers`
+
+```java
+protected void processAnnotationOnMethod(MethodMetadata data,
+                                         Annotation methodAnnotation,
+                                         Method method) {
+  // 传入方法注解类型
+  Class<? extends Annotation> annotationType = methodAnnotation.annotationType();
+  
+  // RequestLine
+  if (annotationType == RequestLine.class) {
+    String requestLine = RequestLine.class.cast(methodAnnotation).value();
+    checkState(emptyToNull(requestLine) != null,
+               "RequestLine annotation was empty on method %s.", method.getName());
+
+    Matcher requestLineMatcher = REQUEST_LINE_PATTERN.matcher(requestLine);
+    if (!requestLineMatcher.find()) {
+      throw new IllegalStateException(String.format(
+        "RequestLine annotation didn't start with an HTTP verb on method %s",
+        method.getName()));
+    } else {
+      // 保存 HTTP METHOD
+      data.template().method(HttpMethod.valueOf(requestLineMatcher.group(1)));
+      // 保存 HTTP URL
+      data.template().uri(requestLineMatcher.group(2));
+    }
+    data.template().decodeSlash(RequestLine.class.cast(methodAnnotation).decodeSlash());
+    data.template().collectionFormat(RequestLine.class.cast(methodAnnotation).collectionFormat());
+
+    // Body
+  } else if (annotationType == Body.class) {
+    String body = Body.class.cast(methodAnnotation).value();
+    checkState(emptyToNull(body) != null, "Body annotation was empty on method %s.",
+               method.getName());
+    if (body.indexOf('{') == -1) {
+      data.template().body(body);
+    } else {
+      data.template().bodyTemplate(body);
+    }
+    
+    // Headers
+  } else if (annotationType == Headers.class) {
+    String[] headersOnMethod = Headers.class.cast(methodAnnotation).value();
+    checkState(headersOnMethod.length > 0, "Headers annotation was empty on method %s.", method.getName());
+    data.template().headers(toMap(headersOnMethod));
+  }
+}
+```
+
+#### processAnnotationsOnParameter
+
+ 参数上可能有三个注解：
+
+1. `@Param-> data.indexToName`
+2. `@QueryMap-> data.queryMapIndex`
+3. `@HeaderMap-> data.headerMapIndex`
+
+```java
+protected boolean processAnnotationsOnParameter(MethodMetadata data,
+                                                Annotation[] annotations,
+                                                int paramIndex) {
+  boolean isHttpAnnotation = false;
+  for (Annotation annotation : annotations) {
+    Class<? extends Annotation> annotationType = annotation.annotationType();
+    // Param
+    if (annotationType == Param.class) {
+      Param paramAnnotation = (Param) annotation;
+      String name = paramAnnotation.value();
+      checkState(emptyToNull(name) != null, "Param annotation was empty on param %s.", paramIndex);
+      nameParam(data, name, paramIndex);
+      Class<? extends Param.Expander> expander = paramAnnotation.expander();
+      if (expander != Param.ToStringExpander.class) {
+        data.indexToExpanderClass().put(paramIndex, expander);
+      }
+      data.indexToEncoded().put(paramIndex, paramAnnotation.encoded());
+      isHttpAnnotation = true;
+      // 即不是@Headers和@Body上的参数，只能是formParams了
+      if (!data.template().hasRequestVariable(name)) {
+        data.formParams().add(name);
+      }
+      
+      // QueryMap
+    } else if (annotationType == QueryMap.class) {
+      checkState(data.queryMapIndex() == null, "QueryMap annotation was present on multiple parameters.");
+      data.queryMapIndex(paramIndex);
+      data.queryMapEncoded(QueryMap.class.cast(annotation).encoded());
+      isHttpAnnotation = true;
+      
+      // HeaderMap
+    } else if (annotationType == HeaderMap.class) {
+      checkState(data.headerMapIndex() == null, "HeaderMap annotation was present on multiple parameters.");
+      data.headerMapIndex(paramIndex);
+      isHttpAnnotation = true;
+    }
+  }
+  return isHttpAnnotation;
+}
+```
+
+# Spring Cloud OpenFeign
 
 
 
