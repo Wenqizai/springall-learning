@@ -737,5 +737,241 @@ protected boolean processAnnotationsOnParameter(MethodMetadata data,
 
 # Spring Cloud OpenFeign
 
+由上述分析可知，Spring Cloud OpenFeign目的，一方面是适配Spring MVC的REST声明式注解，另一方面加入Spring Cloud的其他组件的支持，如注册中心，配置中心等。
+
+因此，Spring Cloud OpenFeign可以通过改写Feign和实现Contract等手段，来完成上述的目的。
+
+## Feign 装配流程
+
+
+
+![SpringCloud-Feign装配流程.png](spring-openfeign.assets/SpringCloud-Feign装配流程.png)
+
+Feign的两个装配入口：
+
+### @EnableAutoConfiguration
+
+@EnableAutoConfiguration会自动装配factories文件下的配置类。（/META-INF/spring.factories）
+
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.springframework.cloud.openfeign.ribbon.FeignRibbonClientAutoConfiguration,\
+org.springframework.cloud.openfeign.hateoas.FeignHalAutoConfiguration,\
+org.springframework.cloud.openfeign.FeignAutoConfiguration,\
+org.springframework.cloud.openfeign.encoding.FeignAcceptGzipEncodingAutoConfiguration,\
+org.springframework.cloud.openfeign.encoding.FeignContentGzipEncodingAutoConfiguration,\
+org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfiguration
+```
+
+- `FeignAutoConfiguration`：自动装配`FeignContext`和`Targeter`，以及`Client`配置。
+  - **FeignContext**：每个FeignClient的装配上下文，默认配置是FeignClientsConfiguration；
+  - **Targeter**：两种实现
+    - DefaultTargeter，直接调用Feign.Builder；
+    - HystrixTargeter，调用HystrixFeign.Builder，开启熔断。
+  - **Client**：自动装配 ApacheHttpClient，OkHttpClient，装配条件不满足，默认是 Client.Default。但这些 Client 都没有实现负载均衡。
+
+- `FeignRibbonClientAutoConfiguration`：实现负载均衡，负载均衡是在Client这一层实现的（均被LoadBalancerFeignClient包装，实现负载均衡）。
+  - **HttpClientFeignLoadBalancedConfiguration**：ApacheHttpClient实现负载均衡
+  - **OkHttpFeignLoadBalancedConfiguration**：OkHttpClient实现负载均衡
+  - **DefaultFeignLoadBalancedConfiguration**：Client.Default实现负载均衡
+
+### @EnableFeignClients
+
+`@EnableFeignClients` 注入 `FeignClientsRegistrar`，`FeignClientsRegistrar` 开启自动扫描，将包下 `@FeignClient` 标注的接口包装成 `FeignClientFactoryBean` 对象，最终通过 `Feign.Builder` 生成该接口的代理对象。而 `Feign.Builder` 的默认配置是 `FeignClientsConfiguration`，是在 `FeignAutoConfiguration` 自动注入的。
+
+> **注意：** 熔断与限流是 `FeignAutoConfiguration` 通过注入 `HystrixTargeter` 完成的，而负载均衡是 `FeignRibbonClientAutoConfiguration` 注入的。
+
+## Feign 自动装配
+
+### FeignAutoConfiguration
+
+#### FeignContext
+
+FeignContext 是每个 Feign 客户端配置的上下文环境，会将初始化一个 Feign 的组件都在一个子 ApplicationContext 中初始化，从而隔离不同的 Feign 客户端。换名话说，不同名称的 @FeignClient 都会初始化一个子的 Spring 容器。
+
+**注意：** 每个 Feign 客户端除了默认 FeignClientsConfiguration，还可以自定义配置类 FeignClientSpecification。
+
+```java
+@Autowired(required = false)
+private List<FeignClientSpecification> configurations = new ArrayList<>();
+
+@Bean
+public FeignContext feignContext() {
+   FeignContext context = new FeignContext();
+   context.setConfigurations(this.configurations);
+   return context;
+}
+
+public class FeignContext extends NamedContextFactory<FeignClientSpecification> {
+	public FeignContext() {
+		super(FeignClientsConfiguration.class, "feign", "feign.client.name");
+	}
+}
+```
+
+**总结：** FeignClientsConfiguration 是 Feign 的默认配置，可以通过 @EnableFeignClients 和 @FeignClient 修改默认配置。FeignClientsConfiguration 主要配置如下：
+
+```java
+@Configuration
+public class FeignClientsConfiguration {
+    @Bean
+    @ConditionalOnMissingBean
+    public Decoder feignDecoder() {
+        return new OptionalDecoder(
+            new ResponseEntityDecoder(new SpringDecoder(this.messageConverters)));
+    }
+    
+    // 适配 Spring MVC 注解
+    @Bean
+    @ConditionalOnMissingBean
+    public Contract feignContract(ConversionService feignConversionService) {
+        return new SpringMvcContract(this.parameterProcessors, feignConversionService);
+    }
+
+    @Bean
+    @Scope("prototype")
+    @ConditionalOnMissingBean
+    public Feign.Builder feignBuilder(Retryer retryer) {
+        return Feign.builder().retryer(retryer);
+    }
+}
+```
+
+#### Targeter
+
+Targeter 有两种实现：一是 DefaultTargeter，直接调用 Feign.Builder； 二是 HystrixTargeter，调用 HystrixFeign.Builder，开启熔断。
+
+```java
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnClass(name = "feign.hystrix.HystrixFeign")
+protected static class HystrixFeignTargeterConfiguration {
+
+   @Bean
+   @ConditionalOnMissingBean
+   public Targeter feignTargeter() {
+      return new HystrixTargeter();
+   }
+
+}
+
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnMissingClass("feign.hystrix.HystrixFeign")
+protected static class DefaultFeignTargeterConfiguration {
+
+   @Bean
+   @ConditionalOnMissingBean
+   public Targeter feignTargeter() {
+      return new DefaultTargeter();
+   }
+
+}
+```
+
+- DefaultTargeter
+
+```java
+class DefaultTargeter implements Targeter {
+
+   @Override
+   public <T> T target(FeignClientFactoryBean factory, Feign.Builder feign,
+         FeignContext context, Target.HardCodedTarget<T> target) {
+      return feign.target(target);
+   }
+
+}
+```
+
+- HystrixTargeter
+
+```java
+class HystrixTargeter implements Targeter {
+
+   @Override
+   public <T> T target(FeignClientFactoryBean factory, Feign.Builder feign,
+         FeignContext context, Target.HardCodedTarget<T> target) {
+      if (!(feign instanceof feign.hystrix.HystrixFeign.Builder)) {
+         return feign.target(target);
+      }
+      feign.hystrix.HystrixFeign.Builder builder = (feign.hystrix.HystrixFeign.Builder) feign;
+      String name = StringUtils.isEmpty(factory.getContextId()) ? factory.getName()
+            : factory.getContextId();
+      SetterFactory setterFactory = getOptional(name, context, SetterFactory.class);
+      if (setterFactory != null) {
+         builder.setterFactory(setterFactory);
+      }
+      Class<?> fallback = factory.getFallback();
+      if (fallback != void.class) {
+         return targetWithFallback(name, context, target, builder, fallback);
+      }
+      Class<?> fallbackFactory = factory.getFallbackFactory();
+      if (fallbackFactory != void.class) {
+         return targetWithFallbackFactory(name, context, target, builder,
+               fallbackFactory);
+      }
+
+      return feign.target(target);
+   }
+}
+```
+
+#### Client
+
+`FeignAutoConfiguration`下，默认的`FeignClientsConfiguration`和`OkHttpFeignConfiguration`均是不实现负载均衡的Client。若要实现负载均衡，则需`FeignRibbonClientAutoConfiguration`。
+
+### FeignRibbonClientAutoConfiguration
+
+FeignRibbonClientAutoConfiguration 实现了负载均衡。==SpringClientFactory 实际是 RibbonClientFactory==，功能等同于 FeignContext，用于装配 Ribbon 的基本组件。
+
+注意在 `FeignRibbonClientAutoConfiguration` 之上 import 了三个配置类，`HttpClientFeignLoadBalancedConfiguration`、`OkHttpFeignLoadBalancedConfiguration`、`DefaultFeignLoadBalancedConfiguration`。
+
+```java
+@ConditionalOnClass({ ILoadBalancer.class, Feign.class })
+@ConditionalOnProperty(value = "spring.cloud.loadbalancer.ribbon.enabled",
+                       matchIfMissing = true)
+@Configuration(proxyBeanMethods = false)
+@AutoConfigureBefore(FeignAutoConfiguration.class)
+@EnableConfigurationProperties({ FeignHttpClientProperties.class })
+// Order is important here, last should be the default, first should be optional
+// see
+// https://github.com/spring-cloud/spring-cloud-netflix/issues/2086#issuecomment-316281653
+@Import({ HttpClientFeignLoadBalancedConfiguration.class,
+         OkHttpFeignLoadBalancedConfiguration.class,
+         DefaultFeignLoadBalancedConfiguration.class })
+public class FeignRibbonClientAutoConfiguration {
+
+    @Bean
+    @Primary
+    @ConditionalOnMissingBean
+    @ConditionalOnMissingClass("org.springframework.retry.support.RetryTemplate")
+    public CachingSpringLoadBalancerFactory cachingLBClientFactory(
+        SpringClientFactory factory) {
+        // cachingFactory 用于组装 FeignLoadBalancer
+        return new CachingSpringLoadBalancerFactory(factory);
+    }
+
+    @Bean
+    @Primary
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(name = "org.springframework.retry.support.RetryTemplate")
+    public CachingSpringLoadBalancerFactory retryabeCachingLBClientFactory(SpringClientFactory factory, LoadBalancedRetryFactory retryFactory) {
+        // cachingFactory 用于组装 FeignLoadBalancer
+        return new CachingSpringLoadBalancerFactory(factory, retryFactory);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public Request.Options feignRequestOptions() {
+        return LoadBalancerFeignClient.DEFAULT_OPTIONS;
+    }
+
+}
+```
+
+### EnableFeignClients 
+
+
+
+
+
 
 
