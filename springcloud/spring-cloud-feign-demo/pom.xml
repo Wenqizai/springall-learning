@@ -12,28 +12,15 @@
     <artifactId>spring-cloud-feign-demo</artifactId>
 
     <dependencies>
+        <!-- Eureka客户端 -->
         <dependency>
-            <groupId>io.github.openfeign</groupId>
-            <artifactId>parent</artifactId>
-            <version>10.4.0</version>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
+        
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.github.openfeign</groupId>
-                    <artifactId>feign-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.github.openfeign</groupId>
-                    <artifactId>feign-slf4j</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.github.openfeign</groupId>
-                    <artifactId>feign-hystrix</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 </project>
