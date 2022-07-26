@@ -969,6 +969,244 @@ public class FeignRibbonClientAutoConfiguration {
 
 ### EnableFeignClients 
 
+从`@EnableFeignClients`的属性大致可以推断出，`FeignClientsRegistrar`会扫描`basePackages`包下的所有 `@FeignClient`注解的类，用`Feign.Builder`生成动态代理的 Bean 注入到 Spring 容器中。
+
+```java
+@Import(FeignClientsRegistrar.class)
+public @interface EnableFeignClients {
+    String[] basePackages() default {};			 // 包扫描路径
+    Class<?>[] defaultConfiguration() default {};// 默认配置
+}
+```
+
+#### FeignClientsRegistrar
+
+```java
+class FeignClientsRegistrar
+    implements ImportBeanDefinitionRegistrar, ResourceLoaderAware, EnvironmentAware {
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+        // 注册@EnableFeignClients#defaultConfiguration 默认配置类
+        registerDefaultConfiguration(metadata, registry);
+        // 扫描所有的 @FeignClient 注解
+        registerFeignClients(metadata, registry);
+    } 
+}
+```
+
+> **registerDefaultConfiguration**
+
+目的：将`@EnableFeignClients`标注的默认配置`defaultConfiguration`注入到容器中。
+
+`FeignAutoConfiguration` 自动装配 `FeignContext` 时的 `List<FeignClientSpecification> configurations` 吗，就是将 `@EnableFeignClients` 和 `@FeignClient` 的 `configuration` 属性注册到 Spring 的容器中。
+
+```java
+private void registerClientConfiguration(BeanDefinitionRegistry registry, Object name, Object configuration) {
+    // 这种类型FeignClientSpecification的Bean，供FeignContext自动装配使用
+    BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(FeignClientSpecification.class);
+    builder.addConstructorArgValue(name);
+    builder.addConstructorArgValue(configuration);
+    registry.registerBeanDefinition(name + "." + FeignClientSpecification.class.getSimpleName(),
+                                    builder.getBeanDefinition());
+}
+```
+
+> **registerFeignClients**
+
+registerFeignClients 将 @FeignClient 标注的接口装配成 FeignClientFactoryBean 注入到容器中。FeignClientFactoryBean#getObject 最终会调用 feign.target 生成最终的代理对象。
+
+```java
+public void registerFeignClients(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+
+    LinkedHashSet<BeanDefinition> candidateComponents = new LinkedHashSet<>();
+    Map<String, Object> attrs = metadata.getAnnotationAttributes(EnableFeignClients.class.getName());
+    // 扫描条件: @FeignClient
+    AnnotationTypeFilter annotationTypeFilter = new AnnotationTypeFilter(FeignClient.class);
+    final Class<?>[] clients = attrs == null ? null : (Class<?>[]) attrs.get("clients");
+
+    // @EnableFeignClients没有标注client
+    if (clients == null || clients.length == 0) {
+        ClassPathScanningCandidateComponentProvider scanner = getScanner();
+        scanner.setResourceLoader(this.resourceLoader);
+        scanner.addIncludeFilter(new AnnotationTypeFilter(FeignClient.class));
+        Set<String> basePackages = getBasePackages(metadata);
+        // 扫描 basePackage 下的 @FeignClient 注解
+        for (String basePackage : basePackages) {
+            candidateComponents.addAll(scanner.findCandidateComponents(basePackage));
+        }
+    } else {
+        // @EnableFeignClients标注了client加入candidateComponents等待加入bean, @EnableFeignClients(clients = StoreClient.class)
+        for (Class<?> clazz : clients) {
+            candidateComponents.add(new AnnotatedGenericBeanDefinition(clazz));
+        }
+    }
+
+    for (BeanDefinition candidateComponent : candidateComponents) {
+        if (candidateComponent instanceof AnnotatedBeanDefinition) {
+            // verify annotated class is an interface
+            AnnotatedBeanDefinition beanDefinition = (AnnotatedBeanDefinition) candidateComponent;
+            AnnotationMetadata annotationMetadata = beanDefinition.getMetadata();
+            Assert.isTrue(annotationMetadata.isInterface(), "@FeignClient can only be specified on an interface");
+
+            Map<String, Object> attributes = annotationMetadata.getAnnotationAttributes(FeignClient.class.getCanonicalName());
+
+            String name = getClientName(attributes);
+            // 注册 @FeignClient 的配置内容
+            registerClientConfiguration(registry, name, attributes.get("configuration"));
+            // 将该接口通过 FeignClientFactoryBean 注入到容器中
+            registerFeignClient(registry, annotationMetadata, attributes);
+        }
+    }
+}
+
+// 注册 FeignClientFactoryBean
+private void registerFeignClient(BeanDefinitionRegistry registry,
+                                 AnnotationMetadata annotationMetadata, Map<String, Object> attributes) {
+    String className = annotationMetadata.getClassName();
+    BeanDefinitionBuilder definition = BeanDefinitionBuilder
+        .genericBeanDefinition(FeignClientFactoryBean.class);
+    validate(attributes);
+    definition.addPropertyValue("url", getUrl(attributes));
+    definition.addPropertyValue("path", getPath(attributes));
+    String name = getName(attributes);
+    definition.addPropertyValue("name", name);
+    String contextId = getContextId(attributes);
+    definition.addPropertyValue("contextId", contextId);
+    definition.addPropertyValue("type", className);
+    definition.addPropertyValue("decode404", attributes.get("decode404"));
+    definition.addPropertyValue("fallback", attributes.get("fallback"));
+    definition.addPropertyValue("fallbackFactory", attributes.get("fallbackFactory"));
+    definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+
+    String alias = contextId + "FeignClient";
+    AbstractBeanDefinition beanDefinition = definition.getBeanDefinition();
+    beanDefinition.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, className);
+
+    // has a default, won't be null
+    boolean primary = (Boolean) attributes.get("primary");
+
+    beanDefinition.setPrimary(primary);
+
+    String qualifier = getQualifier(attributes);
+    if (StringUtils.hasText(qualifier)) {
+        alias = qualifier;
+    }
+    // 生成FeignClientFactoryBean
+    BeanDefinitionHolder holder = new BeanDefinitionHolder(beanDefinition, className, new String[] { alias });
+    // 注册FeignClientFactoryBean
+    BeanDefinitionReaderUtils.registerBeanDefinition(holder, registry);
+}
+```
+
+### FeignClientFactoryBean
+
+上述可知，Spring启动时解析注解 `@EnableFeignClients` 和 `@FeignClient` ，将其属性装配成 `FeignClientFactoryBean` 注入容器中。
+
+我们知道 `FeignClientFactoryBean` 是 Spring 的 Bean 工厂类，通过其 `getObject()` 方法可以获取真正的 Bean。所以在 `getObject` 中一定可以看到类似 `feign.target` 生成动态代理对象的代码。
+
+```java
+@Override
+public Object getObject() throws Exception {
+    return getTarget();
+}
+
+/**
+ * @param <T> the target type of the Feign client 目标代理对象类型
+ * @return a {@link Feign} client created with the specified data and the context
+ * information	
+ */
+<T> T getTarget() {
+    // 1. FeignAutoConfiguration 自动装配 FeignContext
+    FeignContext context = applicationContext.getBean(FeignContext.class);
+    Feign.Builder builder = feign(context);
+
+    // 2. 没有指定url，则一定是负载均衡
+    if (!StringUtils.hasText(url)) {
+        if (!name.startsWith("http")) {
+            url = "http://" + name;
+        }
+        else {
+            url = name;
+        }
+        url += cleanPath();
+        // 生成负载均衡的代理对象
+        return (T) loadBalance(builder, context, new HardCodedTarget<>(type, name, url));
+    }
+    
+    // 3. url存在，不用负载均衡
+    if (StringUtils.hasText(url) && !url.startsWith("http")) {
+        url = "http://" + url;
+    }
+    String url = this.url + cleanPath();
+    Client client = getOptional(context, Client.class);
+    if (client != null) {
+        if (client instanceof LoadBalancerFeignClient) {
+            // not load balancing because we have a url,
+            // but ribbon is on the classpath, so unwrap
+            client = ((LoadBalancerFeignClient) client).getDelegate();
+        }
+        if (client instanceof FeignBlockingLoadBalancerClient) {
+            // not load balancing because we have a url,
+            // but Spring Cloud LoadBalancer is on the classpath, so unwrap
+            client = ((FeignBlockingLoadBalancerClient) client).getDelegate();
+        }
+        builder.client(client);
+    }
+    
+    // 4 FeignAutoConfiguration 自动装配 Targeter
+    Targeter targeter = get(context, Targeter.class);
+    // 调用 feign.target 生成动态代理
+    return (T) targeter.target(this, builder, context, new HardCodedTarget<>(type, name, url));
+}
+```
+
+**总结：** 至此，`@FeignClient` 标注的接口，最终通过 `targeter.target` 生成最终的代理对象。在 `FeignClientFactoryBean` 中有 2 个重要的对象 `FeignClient` 和 `Targeter`，这两个对象都是通过 `FeignAutoConfiguration` 自动注入的。
+
+1. FeignClient 是所有 `@FeignClient` 的上下文环境，管理了 `Feign.Builder` 的所有配置。根据 `@FeignClient`（同一个服务）的 `contextId` 区分不同的上下文环境，每个环境都是一个子 Spring 容器，从而直到隔离不同 `@FeignClient` 的目的。`@FeignClient` 的默认配置是 `FeignClientsConfiguration`，但同时也可以通过 `@EnableFeignClients` 和 @FeignClient 的 configuration 属性进行修改。
+
+   ```java
+   // NamedContextFactory#getContext 会根据 name 创建一个 ApplicationContext
+   // FeignContext.getInstance(this.contextId, type)，在本文中就是根据 contextId 区分
+   protected AnnotationConfigApplicationContext getContext(String name) {
+       if (!this.contexts.containsKey(name)) {
+           synchronized (this.contexts) {
+               if (!this.contexts.containsKey(name)) {
+                   this.contexts.put(name, createContext(name));
+               }
+           }
+       }
+       return this.contexts.get(name);
+   }
+   ```
+
+2. Targeter 可以实现整合 Hystrix，实现熔断与限流。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
