@@ -10,17 +10,14 @@
     <version>1.0-SNAPSHOT</version>
     <modules>
         <module>springcloud</module>
-        <module>spring-cloud-eureka</module>
-        <module>source/spring-cloud-eureka</module>
-        <module>springcloud/spring-could-eureka-demo</module>
-        <module>spring-cloud-feign-demo</module>
+        <module>thinking-in-spring</module>
     </modules>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.3.1.RELEASE</version>
-    </parent>
+<!--    <parent>-->
+<!--        <groupId>org.springframework.boot</groupId>-->
+<!--        <artifactId>spring-boot-starter-parent</artifactId>-->
+<!--        <version>2.3.1.RELEASE</version>-->
+<!--    </parent>-->
 
     <properties>
         <maven.test.skip>true</maven.test.skip>
@@ -49,19 +46,19 @@
     <!--依赖管理，用于管理spring-cloud的依赖-->
     <dependencyManagement>
         <dependencies>
-            <dependency>
+<!--            <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>Hoxton.SR9</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
+            </dependency>-->
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>fastjson</artifactId>
                 <version>1.2.33</version>
             </dependency>
-            <dependency>
+            <!--<dependency>
                 <groupId>com.alibaba.cloud</groupId>
                 <artifactId>spring-cloud-alibaba-dependencies</artifactId>
                 <version>2.2.6.RELEASE</version>
@@ -74,7 +71,7 @@
                 <version>2.3.2.RELEASE</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
+            </dependency>-->
         </dependencies>
     </dependencyManagement>
 

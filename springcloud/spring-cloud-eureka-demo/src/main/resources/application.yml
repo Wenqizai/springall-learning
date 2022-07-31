@@ -13,4 +13,4 @@ eureka:
     fetch-registry: false
 
 server:
-  port: 8888
+  port: 5888
