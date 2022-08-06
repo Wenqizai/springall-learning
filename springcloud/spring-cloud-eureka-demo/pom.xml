@@ -3,20 +3,16 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>springall-learning</artifactId>
+        <artifactId>springcloud</artifactId>
         <groupId>com.wenqi</groupId>
         <version>1.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>spring-cloud-eureka-demo</artifactId>
 
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-commons</artifactId>
-        </dependency>
         <!-- 引入 eureka-server表明当前工程是作为服务注册中心 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
