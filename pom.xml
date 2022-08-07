@@ -12,6 +12,7 @@
         <module>springcloud</module>
         <module>thinking-in-spring</module>
         <module>java-beans-demo</module>
+        <module>ioc-container-overview</module>
     </modules>
 
     <properties>
