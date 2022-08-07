@@ -15,7 +15,7 @@
         <property name="targetBeanName" value="user"/>
     </bean>
 
-    <bean id="superUser" class="com.wenqi.ioc.overview.domain.SuperUser" parent="user" primary="false">
+    <bean id="superUser" class="com.wenqi.ioc.overview.domain.SuperUser" parent="user" primary="true">
         <property name="address" value="杭州"/>
     </bean>
 

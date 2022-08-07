@@ -68,12 +68,32 @@ Setting注入：程序发布，Bean实例化之后可以再次Setter，修改Bea
 
 ## Spring IOC
 
+### 依赖来源
+
+1. 自定义的Bean
+2. 容器内建Bean对象
+3. 容器内建依赖
+
 ### 依赖查找
 
 1. 根据Bean名称查找：实时查找、延时查找；
 2. 根据Bean类型查找：单个Bean对象、集合Bean对象；
 3. 根据Bean名称 + 类型查找；
 4. 根据Java注解查找：单个Bean对象、集合Bean对象。
+
+demo：com.wenqi.ioc.overview.dependency.lookup.DependencyLookupDemo
+
+### 依赖注入
+
+依赖查找相对繁琐，而且对代码有一定的侵入性，而依赖注入可以补齐这些缺点。
+
+1. 根据Bean名称注入；
+2. 根据Bean类型注入：单个Bean对象、集合Bean对象；
+3. 注入容器内构建Bean对象；
+4. 注入非Bean对象
+5. 注入类型：实时注入、延迟注入。
+
+demo：
 
 
 
