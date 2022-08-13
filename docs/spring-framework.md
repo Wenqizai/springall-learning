@@ -74,6 +74,8 @@ Setting注入：程序发布，Bean实例化之后可以再次Setter，修改Bea
 2. 容器内建Bean对象
 3. 容器内建依赖
 
+打破我们对于Bean来源的刻板影响，Bean来源不单单只有我们自定义的Bean。
+
 ### 依赖查找
 
 1. 根据Bean名称查找：实时查找、延时查找；
@@ -93,7 +95,20 @@ demo：com.wenqi.ioc.overview.dependency.lookup.DependencyLookupDemo
 4. 注入非Bean对象
 5. 注入类型：实时注入、延迟注入。
 
-demo：
+demo：com.wenqi.ioc.overview.dependency.injection.DependencyInjectionDemo
 
+### 配置元信息
 
+通过配置元信息，可以影响容器内的行为。
+
+> 如何配置元信息？
+
+1. 通过Bean定义配置
+   - 基于XML文件、基于Properties文件、基于Java注解、基于Java API（专题讨论）
+2. IOC容器配置
+   - 基于XML文件、基于Java注解、基于Java API（专题讨论）
+3. 外部化属性配置
+   - 基于Java注解
+
+### BeanFactory | ApplicationContext
 
