@@ -112,3 +112,26 @@ demo：com.wenqi.ioc.overview.dependency.injection.DependencyInjectionDemo
 
 ### BeanFactory | ApplicationContext
 
+> Spring 文档解析
+
+The [`BeanFactory`](https://docs.spring.io/spring-framework/docs/5.2.23.BUILD-SNAPSHOT/javadoc-api/org/springframework/beans/factory/BeanFactory.html) interface provides an advanced configuration mechanism capable of managing any type of object. [`ApplicationContext`](https://docs.spring.io/spring-framework/docs/5.2.23.BUILD-SNAPSHOT/javadoc-api/org/springframework/context/ApplicationContext.html) is a sub-interface of `BeanFactory`. It adds:
+
+- Easier integration with Spring’s AOP features
+- Message resource handling (for use in internationalization)
+- Event publication
+- Application-layer specific contexts such as the `WebApplicationContext` for use in web applications.
+
+In short, the `BeanFactory` provides the configuration framework and basic functionality, and the `ApplicationContext` adds more enterprise-specific functionality. The `ApplicationContext` is a complete superset of the `BeanFactory` and is used exclusively in this chapter in descriptions of Spring’s IoC container.
+
+简单来说：`BeanFactory`和`ApplicationContext`都是IOC容器，`BeanFactory`接口提供容器的基本功能，是一个更加底层的容器。而`ApplicationContext`继承于`BeanFactory`，拥有`BeanFactory`的所有的特性，有提供了一些更多的企业的特性，如AOP，国际化，事件发布，容器上下文等。因此`ApplicationContext`是`Beanfactory`的超集（注意不是超类）。
+
+
+
+
+
+
+
+
+
+
+
