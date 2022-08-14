@@ -10,7 +10,17 @@
 
 ### IOC
 
+> IOC容器是什么?
 
+IOC控制反转，我们把对象的生命周期都交给IOC来管理。其中，IOC重要的特性就是依赖注入（DI）、依赖查找。
+
+> BeanFactory 与 FactoryBean区别？
+
+BeanFactory是IOC底层的容器；
+
+FactoryBean是创建Bean的一种方式，帮助实现负载的初始化逻辑。
+
+1. 如何使用，ApplicationContext BenFactory选哪一个？
 
 ## IOC
 
@@ -124,6 +134,44 @@ The [`BeanFactory`](https://docs.spring.io/spring-framework/docs/5.2.23.BUILD-SN
 In short, the `BeanFactory` provides the configuration framework and basic functionality, and the `ApplicationContext` adds more enterprise-specific functionality. The `ApplicationContext` is a complete superset of the `BeanFactory` and is used exclusively in this chapter in descriptions of Spring’s IoC container.
 
 简单来说：`BeanFactory`和`ApplicationContext`都是IOC容器，`BeanFactory`接口提供容器的基本功能，是一个更加底层的容器。而`ApplicationContext`继承于`BeanFactory`，拥有`BeanFactory`的所有的特性，有提供了一些更多的企业的特性，如AOP，国际化，事件发布，容器上下文等。因此`ApplicationContext`是`Beanfactory`的超集（注意不是超类）。
+
+> ApplicationContext支持的一些特性
+
+- 面向切面（AOP）
+- 配置元信息（Configuration Metadata）
+- 资源管理（Resources）
+- 事件（Event）
+- 国际化（i18n）
+- 注解（Annotations）
+- Environment 抽象（Enviroment Abstraction）
+
+https://docs.spring.io/spring-framework/docs/5.2.23.BUILD-SNAPSHOT/spring-framework-reference/core.html#context-introduction
+
+> 如何使用，ApplicationContext BenFactory选哪一个？
+
+com.wenqi.ioc.overview.container.BeanFactoryAsIocContainerDemo
+
+com.wenqi.ioc.overview.container.AnnotationApplicationContextAsIocContainerDemo
+
+### IOC生命周期
+
+> 容器启动
+
+org.springframework.context.support.AbstractApplicationContext#refresh
+
+- ioc启动都做了哪些准备？
+  - IOC配置元信息读取和解析
+  - IOC容器生命周期
+  - Spring事件发布
+  - 国际化
+
+> 容器关闭
+
+org.springframework.context.support.AbstractApplicationContext#close
+
+## Spring Bean
+
+
 
 
 
