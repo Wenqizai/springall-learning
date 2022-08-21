@@ -259,7 +259,19 @@ com.wenqi.spring.bean.definition.BeanAliasDemo
    - 非命名方式：org.springframework.beans.factory.support.BeanDefinitionReaderUtils#registerWithGeneratedName
    - 配置类方式：org.springframework.context.annotation.AnnotatedBeanDefinitionReader#register
 
+#### Bean 实例化
 
+Instantiation 的两种方式：
+
+1. 常规方式：com.wenqi.spring.bean.definition.BeanInstantiationDemo
+   - 通过构造器（配置元信息：XML、Java 注解和 Java API）
+   - 通过静态工厂方法（配置元信息：XML 和 Java API）
+   - 通过 Bean 工厂方法（配置元信息：XML和 Java API）
+   - 通过 FactoryBean （配置元信息：XML、Java 注解和 Java API）
+2. 特殊方式：com.wenqi.spring.bean.definition.SpecialBeanInstantiationDemo
+   - 通过 ServiceLoaderFactoryBean （配置元信息：XML、Java 注解 和 Java API）
+   - 通过 org.springframework.beans.factory.config.AutowireCapableBeanFactory#createBean(java.lang.Class<?>, int, boolean)
+   - 通过 org.springframework.beans.factory.support.BeanDefinitionRegistry#registerBeanDefinition
 
 
 
