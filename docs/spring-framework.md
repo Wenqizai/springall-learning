@@ -171,6 +171,112 @@ org.springframework.context.support.AbstractApplicationContext#close
 
 ## Spring Bean
 
+> 路线
+
+定义Spring Bean -> BeanDefinition -> 命名Spring Bean -> Spring Bean的别名 -> 注册Spring Bean -> 实例化Spring Bean -> 初始化Spring Bean -> 延迟初始化Spring Bean -> 销毁Spring Bean -> 垃圾回收Spring Bean 
+
+### BeanDefinition
+
+#### 是什么？
+
+org.springframework.beans.factory.config.BeanDefinition
+
+BeanDefinition用来定义Bean的配置元信息接口，其中包括：
+
+- Bean的类名
+- Bean行为配置元素，如作用域、自动绑定的模式、生命周期回调等
+- 其他Bean引用，有可称合作者（Collaborators）或者依赖（Dependencies）
+- 配置设置，如Bean属性（Properties）
+
+#### 元信息
+
+BeanDefintion包含的元信息：
+
+| 属性（Property）        | 说明                                         |
+| ----------------------- | -------------------------------------------- |
+| Class                   | Bean全类名，必须是具体类，不能用抽象类或接口 |
+| Name                    | Bean的名称或者ID                             |
+| Scope                   | Bean的作用域（如：singleton、prototype）     |
+| Constructor arguments   | Bean构造器参数（用于依赖注入）               |
+| Properties              | Bean的属性设置（用于依赖注入）               |
+| Autowiring mode         | Bean的自动绑定模式（如：通过名称byName）     |
+| Lazy initalization mode | Bean延迟初始化模式（延迟和非延迟）           |
+| Initialization method   | Bean初始化回调方法名称                       |
+| Destruction method      | Bean销毁回调方法名称                         |
+
+#### 构建方式
+
+com.wenqi.spring.bean.definition.BeanDefinitionCreationDemo
+
+1. 通过BeanDefinitionBuilder
+2. 通过AbstractBeanDefinition以及派生类
+
+#### Spring Bean 命名
+
+> Bean 名称
+
+每个Bean拥有一个或者多个标识符（identifiers），这些标识符在 Bean 所在的容器必须是唯一的。通常一个Bean仅有一个标识符，如果需要额外的，可考虑使用别名（Alias）扩充。
+
+在基于XML的配置元信息重，开发人员可用id或者name属性来规定 Bean 的标识符。通常 Bean 的标识符由字母组成，允许出现特殊字符。如果要想引入 Bean 的别名的话，可在 name属性使用半角逗号（“ , ”）或分号（“ ; ”）来间隔。
+
+Bean的 id 或 name 属性并非必须指定，如果留空的话，容器会为Bean自动生成一个唯一的名称。 Bean 的命名尽管没有限制，官方建议使用驼峰命名方式。
+
+> Bean 名称生成器
+
+Bean 名称生成器 BeanNameGenerator，由Spring Framework 2.0.3 引入，框架内建两种实现：
+
+- DeafaultBeanNameGenerator：默认通用 BeanNameGenerator 实现；
+- AnnotationBeanNameGenerator：基于注解扫描的 BeanNameGenerator 实现，起始于 Spring Framework 2.5 
+
+#### Spring Bean 别名
+
+com.wenqi.spring.bean.definition.BeanAliasDemo
+
+有时候，我们会引入第三方的jar包中的bean。如果我们不想沿用第三方原始的bean名称进行依赖查找和依赖注入。我们可以通过起别名的方式，建立别名与原始的bean的映射关系。这样就可以通过别名来进行依赖查找和依赖注入，此时`alias bean == origin bean`。
+
+> Bean 别名（Alias）的价值
+
+1. 复用现有的 BeanDefinition
+2. 更具有场景化的命名方法，如：
+
+```xml
+<alias name="myApp-dataSource"alias="subsystemA-dataSource"/>
+<alias name="myApp-dataSource"alias="subsystemB-dataSource"/>
+```
+
+#### Spring Bean 注册
+
+> BeanDefinition 注册
+
+1. XML 配置元信息
+   - 《bean name="..."/>
+2. Java 注解配置元信息：com.wenqi.spring.bean.definition.AnnotationBeanDefinitionDemo
+   - @Bean
+   - @Component
+   - @Import
+3. Java API 配置元信息
+   - 命名方式：org.springframework.beans.factory.support.BeanDefinitionRegistry#registerBeanDefinition
+   - 非命名方式：org.springframework.beans.factory.support.BeanDefinitionReaderUtils#registerWithGeneratedName
+   - 配置类方式：org.springframework.context.annotation.AnnotatedBeanDefinitionReader#register
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
