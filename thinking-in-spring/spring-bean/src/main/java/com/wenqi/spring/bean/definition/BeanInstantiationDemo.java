@@ -15,17 +15,19 @@ public class BeanInstantiationDemo {
         // 配置XML配置文件
         // 启动Spring应用上下文
         BeanFactory beanFactory = new ClassPathXmlApplicationContext("classpath:META-INF/bean-instantiation-context.xml");
+        // 静态方法
         User user = beanFactory.getBean("user-by-static-method", User.class);
         System.out.println(user);
 
 
         User userByInstanceMethod = beanFactory.getBean("user-by-instance-method", User.class);
+        // Bean工厂方法
         System.out.println(userByInstanceMethod);
 
         // false, 实例化方式不同, 两者不等
         System.out.println(user == userByInstanceMethod);
 
-
+        // FactoryBean方式实例化
         User userByFactoryBean = beanFactory.getBean("user-by-factory-bean", User.class);
         System.out.println(userByFactoryBean);
 

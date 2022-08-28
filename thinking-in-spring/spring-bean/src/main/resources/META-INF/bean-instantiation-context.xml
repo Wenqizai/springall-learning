@@ -9,8 +9,8 @@
           factory-method="createUser"/>
 
     <!-- 实例(Bean)工厂方法实例化 Bean -->
-    <bean id="user-by-instance-method" factory-bean="userFactory" factory-method="createUser"/>
     <bean id="userFactory" class="com.wenqi.spring.bean.factory.DefaultUserFactory"/>
+    <bean id="user-by-instance-method" factory-bean="userFactory" factory-method="createUser"/>
 
     <!-- FactoryBean 实例化 Bean -->
     <bean id="user-by-factory-bean" class="com.wenqi.spring.bean.factory.UserFactoryBean"/>
