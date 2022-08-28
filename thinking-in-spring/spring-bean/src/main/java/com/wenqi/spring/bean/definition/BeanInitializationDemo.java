@@ -25,12 +25,15 @@ public class BeanInitializationDemo {
         // 依赖查找 UserFactory
         UserFactory userFactory = applicationContext.getBean(UserFactory.class);
         System.out.println(userFactory);
+        // 这里可以看出 Bean 的销毁是clone触发, 还是用完Bean之后触发的(答案是close触发)
+        System.out.println("Spring 应用上下文准备关闭 ...");
         // 关闭 Spring 应用上下文
         applicationContext.close();
+        System.out.println("Spring 应用上下文已关闭 ...");
     }
 
-    @Bean(initMethod = "initUserFactory")
-    @Lazy
+    @Bean(initMethod = "initUserFactory", destroyMethod = "doDestroy")
+//    @Lazy
     public UserFactory userFactory() {
         return new DefaultUserFactory();
     }

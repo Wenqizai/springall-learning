@@ -319,9 +319,20 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
 
 **意味者：**非延迟初始化在 ==Spring 应用上下文启动完成后（`applicationContext.refresh()`）==, 进行初始化。而延迟初始化是==依赖查找时触发==Bean的初始化。
 
+#### Bean 销毁
 
+- @PreDestroy 标注方法
+- 实现 DisposableBean 接口的 destroy() 方法
+- 自定义销毁方法
+  - XML 配置：`<bean destroy = "destroy" ... />`
+  - Java 注解：`@Bean(destroy = "destroy")`
+  - Java API：`AbstractBeanDefinition#setDestroyMethodName(String)`
 
+#### Bean 垃圾回收
 
+- 关闭 Spring 容器 （应用上下文）
+- 执行 GC
+- Spring Bean 覆盖的 finalize() 方法被回调
 
 
 
