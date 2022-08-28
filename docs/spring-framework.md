@@ -273,15 +273,51 @@ Instantiation 的两种方式：
    - 通过 org.springframework.beans.factory.config.AutowireCapableBeanFactory#createBean(java.lang.Class<?>, int, boolean)
    - 通过 org.springframework.beans.factory.support.BeanDefinitionRegistry#registerBeanDefinition
 
+#### Bean 初始化
 
+com.wenqi.spring.bean.definition.BeanInitializationDemo
 
+> Bean 初始化方式（Initialization）
 
+- @PostConstruct 标注方法
+- 实现 InitializingBean 接口的 afterPropertiesSet() 方法
+- 自定义初始化方法 initMethod
+  - XML 配置：`<bean init-method = "init" ... />`
+  - Java 注解：`@Bean(initMethod = "init")`
+  - Java API：`AbstractBeanDefinition#setInitMethodName(String)`
 
+**思考：**假设以上三种方式均在同一个 Bean 中定义，那么这些方法的执行顺序是怎样的？
 
+顺序（任何Spring版本）：`@PostConstruct` -> `InitializingBean#afterPropertiesSet()` -> 自定义初始化方法 initMethod
 
+> Bean 延迟初始化 （Lazy Initialization）
 
+- XML 配置 `<bean lazy-init = 'true' ... />`
+- Java 注解：`@Lazy(true)`
 
+**思考：**当某个 Bean 定义为延迟初始化，那么 Spring 容器返回的对象与非延迟的对象存在怎样的差异？
 
+1. 添加 `@Lazy`
+
+```txt
+Spring 应用上下文已启动 ...
+@PostConstruct: UserFactory 初始化中 ... 
+InitializingBean#afterPropertiesSet(): UserFactory 初始化中 ... 
+自定义初始化方法 initUserFactory(): UserFactory 初始化中 ... 
+com.wenqi.spring.bean.factory.DefaultUserFactory@38364841
+```
+
+2. 去掉 `@Lazy`
+
+```txt
+@PostConstruct: UserFactory 初始化中 ... 
+InitializingBean#afterPropertiesSet(): UserFactory 初始化中 ... 
+自定义初始化方法 initUserFactory(): UserFactory 初始化中 ... 
+Spring 应用上下文已启动 ...
+com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
+```
+
+**意味者：**非延迟初始化在 ==Spring 应用上下文启动完成后（`applicationContext.refresh()`）==, 进行初始化。而延迟初始化是==依赖查找时触发==Bean的初始化。
 
 
 
