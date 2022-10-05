@@ -22,6 +22,16 @@ FactoryBean是创建Bean的一种方式，帮助实现负载的初始化逻辑�
 
 1. 如何使用，ApplicationContext BenFactory选哪一个？
 
+### Spring Bean
+
+> 如何注册一个 Spring Bean ?
+
+可以通过 BeanDefinition 和外部单例对象来注册。
+
+外部单例对象：生命周期不由 Spring 管理，但对象交给 Spring 托管，可以进行依赖查找操作。（com.wenqi.spring.bean.definition.SingletonBeanRegistrationDemo）
+
+> 什么是 Spring BeanDefinition？
+
 ## IOC
 
 ### 关注点
@@ -334,17 +344,78 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
 - 执行 GC
 - Spring Bean 覆盖的 finalize() 方法被回调
 
+## 依赖查找
 
+依赖查找的今世前生 -> 单一类型依赖查找 -> 集合类型依赖查找 -> 层次性依赖查找 -> 延迟依赖查找 -> 安全依赖查找 -> 内建可查找的依赖 -> 依赖查找中的经典异常
 
+> 依赖查找的今世前生
 
+- 单一类型依赖查找
+  - JNDI - javax.naming.Context#lookup(javax.naming.Name)
+  - JavaBeans - java.beans.beancontext.BeanContext
+- 集合类型依赖查找
+  - java.beans.beancontext.BeanContext
+- 层次性依赖查找
+  - java.beans.beancontext.BeanContext
 
+### 单一类型
 
+单一类型依赖查找接口：BeanFactory
 
+1. 根据 Bean 名称查找
+   - `getBean(String)`
+   - Spring 2.5 覆盖默认参数：`getBean(String， Object ...)`
+2. 根据 Bean 类型查找
+   - Bean 实时查找
+     - Spring 3.0 `getBean(Class)`
+     - Spring 4.1 覆盖默认参数：`getBean(Class， Object ...)`
+   - Spring 5.1 Bean 延迟查找
+     - `getBeanProvider(Class)`
+     - `getBeanProvider(ResolvableType)`
+3. 根据 Bean 名称 + 类型查找：`getBean(String, Class)`
 
+### 集合类型
 
+集合类型依赖查找接口：ListableBeanFactory
 
+1. 根据 Bean 类型查找
+   - 获取同类型 Bean 名称列表
+     - `getBeanNamesForType(Class)`
+     - Spring 4.2 `getBeanNamesForType(ResolvableType)`
+   - 获取同类型  Bean 实例列表
+     - `getBeanOfType(Class)` 以及重载方法
+2. 通过注解类型查找
+   - Spring 3.0 获取标注类型 Bean 名称列表
+     - `getBeanNameForAnnotation(Class<? extends Annotation>)`
+   - Spring 3.0 获取标注类型 Bean 实例列表
+     - `getBeanWithAnnotation(Class<? extends Annotation>)`
+   - Spring 3.0 获取指定名称 + 标注类型Bean实例
+     - `findAnnotationOnBean(String, Class<? extends Annotation>)`
 
+### 层次性
 
+层次性依赖查找接口：HierarchicalBeanFactory
+
+- 双亲 BeanFactory：`getParentBeanFactory()`
+- 层次性查找
+  - 根据 Bean 名称查找：基于 `containsLocalBean` 方法实现 
+  - 根据 Bean 类型查找实例列表
+    - 单一类型：`BeanFactoryUtils#beanOfType`
+    - 集合类型：`BeanFactoryUtils#beansOfTypeIncludingAncestors`
+  - 根据 Java 注解查找名称列表
+    - `BeanFactoryUtils#beanNamesForTypeIncludingAncestors`
+
+### 延迟查找
+
+Bean 延迟依赖查找接口：
+
+- org.springframework.beans.factory.ObjectFactory
+- org.springframework.beans.factory.ObjectProvider（extends ObjectFactory）
+  - Spring 5 对 Java 8 特性扩展
+    - 函数时接口
+      -  getIfAvailable(Supplier)
+      -  ifAvailable(Consumer)
+    - Stream 扩展 - stream()
 
 
 
