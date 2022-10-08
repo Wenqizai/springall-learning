@@ -358,7 +358,7 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
 - 层次性依赖查找
   - java.beans.beancontext.BeanContext
 
-### 单一类型
+### 单一类型查找
 
 单一类型依赖查找接口：BeanFactory
 
@@ -374,7 +374,7 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
      - `getBeanProvider(ResolvableType)`
 3. 根据 Bean 名称 + 类型查找：`getBean(String, Class)`
 
-### 集合类型
+### 集合类型查找
 
 集合类型依赖查找接口：ListableBeanFactory
 
@@ -392,7 +392,7 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
    - Spring 3.0 获取指定名称 + 标注类型Bean实例
      - `findAnnotationOnBean(String, Class<? extends Annotation>)`
 
-### 层次性
+### 层次性查找
 
 层次性依赖查找接口：HierarchicalBeanFactory
 
@@ -407,15 +407,50 @@ com.wenqi.spring.bean.factory.DefaultUserFactory@641147d0
 
 ### 延迟查找
 
+com.wenqi.spring.dependency.lookup.ObjectProviderDemo
+
 Bean 延迟依赖查找接口：
 
 - org.springframework.beans.factory.ObjectFactory
 - org.springframework.beans.factory.ObjectProvider（extends ObjectFactory）
   - Spring 5 对 Java 8 特性扩展
     - 函数时接口
-      -  getIfAvailable(Supplier)
-      -  ifAvailable(Consumer)
+      -  `getIfAvailable(Supplier)`
+      -  `ifAvailable(Consumer)`
     - Stream 扩展 - stream()
+
+### 安全依赖查找
+
+com.wenqi.spring.dependency.lookup.TypeSafetyDependencyLookupDemo
+
+==注意：层次性依赖查找的安全性取决于其扩展的单一或集合类型的 BeanFactory 接口==
+
+| 依赖查找类型 | 代表实现                           | 是否安全 |
+| ------------ | ---------------------------------- | -------- |
+|              | BeanFactory#getBean                | 否       |
+|              | ObjectFactory#getObject            | 否       |
+|              | ObjectProvider#getIfAvailable      | 是       |
+|              |                                    |          |
+| 集合类型查找 | ListableBeanFactory#getBeansOfType | 是       |
+|              | ObjectProvider#stream              | 是       |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
 
 
 

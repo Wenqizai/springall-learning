@@ -12,7 +12,6 @@
     <modules>
         <module>springcloud</module>
         <module>thinking-in-spring</module>
-        <module>dependency-lookup</module>
     </modules>
 
     <properties>
