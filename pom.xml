@@ -12,6 +12,7 @@
     <modules>
         <module>springcloud</module>
         <module>thinking-in-spring</module>
+        <module>springsecret</module>
     </modules>
 
     <properties>
