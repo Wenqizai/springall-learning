@@ -1,0 +1,8 @@
+com\wenqi\ioc\overview\container\AnnotationApplicationContextAsIocContainerDemo.class
+com\wenqi\ioc\overview\dependency\lookup\DependencyLookupDemo.class
+com\wenqi\ioc\overview\annotation\Super.class
+com\wenqi\ioc\overview\container\BeanFactoryAsIocContainerDemo.class
+com\wenqi\ioc\overview\dependency\injection\DependencyInjectionDemo.class
+com\wenqi\ioc\overview\domain\SuperUser.class
+com\wenqi\ioc\overview\domain\User.class
+com\wenqi\ioc\overview\repository\UserRepository.class

@@ -136,23 +136,118 @@ newsProvider.getAndPersistNews();
 
 ### Spring IOC
 
+Spring 的 IOC 容器是一个提供 IOC 支持的轻量级容器，除了基本的 IOC 支持之外, Spring IOC 还提供了 AOP 框架支持、企业级服务集成等服务。
 
 
 
+<img src="Spring揭秘.assets/SpringIOC与IOC的关系.png" alt="SpringIOC与IOC的关系" style="zoom: 80%;" />
 
 
 
+Spring IOC 提供两种容器类型：`BeanFactory`和`ApplicationContext`。
+
+- **`BeanFactory`**
+  1. 基础类型IOC容器，完整的IOC服务支持;
+  2. 无指定时，默认延时初始化策略（lazy-load）;
+  3. 也就是说Bean被访问时才对Bean进行初始化和依赖注入操作，容器开始启动较快。对于资源有限，并且功能要求不是很严格的场景，`BeanFactory`是比较合适的IOC容器选择。
+
+- **`ApplicationContext`**
+  1. `ApplicationContext`在`BeanFactory`基础上构建，提供完整的**`BeanFactory`**功能之外，还提供其他高级特性，如AOP，国际化，事件发布，容器上下文等；
+  1. 默认容器启动时完成Bean的全部初始化和绑定；
+  1. `ApplicationContext`比`BeanFactory`要求更多的系统资源，如果系统资源充足，`ApplicationContext`是比较合适的IOC容器选择。
+
+-  `ApplicationContext` 与 `BeanFactory` 的类图
+
+![ApplicationContext与BeanFactory的关系](Spring揭秘.assets/ApplicationContext与BeanFactory的关系.png)
+
+可以看到  `ApplicationContext` 继承于 `BeanFactory`，并且比 `BeanFactory` 多继承了一些接口，所以 `ApplicationContext` 功能丰富于 `BeanFactory`。
+
+#### BeanFactory
+
+- 未拥有BeanFactory之前，获取Bean方式
+
+```java
+// 1. 设计FXNewsProvider类用于普遍的新闻处理 (容器，管理Bean和依赖)
+public class FXNewsProvider {
+    private IFXNewsListener newsListener;
+    private IFXNewsPersister newPersistener;
+
+    public FXNewsProvider(IFXNewsListener listener,IFXNewsPersister persister) {
+        this.newsListener = listener;
+        this.newPersistener = persister;
+    }
+}
+
+// 2. 设计IFXNewsListener接口抽象各个新闻社不同的新闻获取方式，并给出相应实现类 (Bean的接口和实现类)
+public interface IFXNewsListener {}
+public class DowJonesNewsListener implements IFXNewsListener {}
+
+// 3. 设计IFXNewsPersister接口抽象不同数据访问方式，并实现相应的实现类 (Bean的接口和实现类)
+public interface IFXNewsPersister {}
+public class DowJonesNewsPersister implements IFXNewsPersister {}
+
+// 4. 实例化Bean
+FXNewsProvider newsProvider = new FXNewsProvider();
+newsProvider.getAndPersistNews();
+```
+
+- 拥有BeanFactory之后，获取Bean方式
+
+1. 编写XML文件（或注解形式）
+
+```xml
+<beans>
+    <bean id="djNewsProvider" class="..FXNewsProvider">
+        <constructor-arg index="0">
+            <ref bean="djNewsListener"/>
+        </constructor-arg>
+        <constructor-arg index="1">
+            <ref bean="djNewsPersister"/>
+        </constructor-arg>
+    </bean>
+</beans>
+```
+
+2. 获取Bean方式
+
+```java
+// 方式一
+BeanFactory container = new XmlBeanFactory(new ClassPathResource("配置文件路径"));
+FXNewsProvider newsProvider = (FXNewsProvider)container.getBean("djNewsProvider");
+newsProvider.getAndPersistNews();
+
+// 方式二
+ApplicationContext container = new ClassPathXmlApplicationContext("配置文件路径");
+FXNewsProvider newsProvider = (FXNewsProvider)container.getBean("djNewsProvider");
+newsProvider.getAndPersistNews();
+
+// 方式三
+ApplicationContext container = new FileSystemXmlApplicationContext("配置文件路径");
+FXNewsProvider newsProvider = (FXNewsProvider)container.getBean("djNewsProvider");
+newsProvider.getAndPersistNews();
+```
+
+##### 注册与绑定方式
 
 
 
+![image-20221024144110698](Spring揭秘.assets/BeanFactory,BeanDefinitionRegistry和DefaultListableBeanFactory的关系.png)
 
 
 
+- **BeanFactory**：定义访问Bean的方式
 
+- **BeanDefinitionRegistry**：担当Bean注册管理的角色
 
+- **DefaultListableBeanFactory**：实现了`BeanFactory`和`BeanDefinitionRegistry`，继承他们的所有功能。
 
+`BeanFactory`只是一个接口，我们最终需要一个该接口的实现来进行实际的Bean的管理，因此不同的`BeanFactory`实现类，承担不同的功能。
 
+每一个受管的对象（Bean），在容器中都会有一个BeanDefinition的实例（instance）与之相对应，<u>该BeanDefinition的实例负责保存对象的所有必要信息，包括其对应的对象的class类型、是否是抽象类、构造方法参数以及其他属性等</u>。当客户端向BeanFactory请求相应对象的时候，BeanFactory通过这些信息为客户端返回一个完备可用的对象实例。
 
+###### 1. 直接编码方式
+
+`com.wenqi.springioc.beanfactory.BeanRegisterAndBind`
 
 
 

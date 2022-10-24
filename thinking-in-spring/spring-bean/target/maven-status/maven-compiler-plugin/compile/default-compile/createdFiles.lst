@@ -1,0 +1,12 @@
+com\wenqi\spring\bean\definition\AnnotationBeanDefinitionDemo.class
+com\wenqi\spring\bean\definition\SingletonBeanRegistrationDemo.class
+com\wenqi\spring\bean\definition\BeanInstantiationDemo.class
+com\wenqi\spring\bean\definition\BeanInitializationDemo.class
+com\wenqi\spring\bean\definition\BeanAliasDemo.class
+com\wenqi\spring\bean\definition\BeanGarbageCollectionDemo.class
+com\wenqi\spring\bean\factory\UserFactory.class
+com\wenqi\spring\bean\definition\SpecialBeanInstantiationDemo.class
+com\wenqi\spring\bean\factory\UserFactoryBean.class
+com\wenqi\spring\bean\definition\AnnotationBeanDefinitionDemo$Config.class
+com\wenqi\spring\bean\factory\DefaultUserFactory.class
+com\wenqi\spring\bean\definition\BeanDefinitionCreationDemo.class
