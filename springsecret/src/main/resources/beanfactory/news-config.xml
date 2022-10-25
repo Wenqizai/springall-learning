@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN"
+        "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+
+    <bean id="fXNewsProvider" class="com.wenqi.springioc.instance.FXNewsProvider">
+        <constructor-arg index="0" ref="djNewsListener"/>
+        <constructor-arg index="1" ref="djNewsPersister"/>
+    </bean>
+
+    <bean id="djNewsListener" class="com.wenqi.springioc.instance.impl.DowJonesNewsListener"/>
+    <bean id="djNewsPersister" class="com.wenqi.springioc.instance.impl.DowJonesNewsPersister"/>
+
+</beans>

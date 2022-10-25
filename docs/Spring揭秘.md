@@ -245,9 +245,47 @@ newsProvider.getAndPersistNews();
 
 每一个受管的对象（Bean），在容器中都会有一个BeanDefinition的实例（instance）与之相对应，<u>该BeanDefinition的实例负责保存对象的所有必要信息，包括其对应的对象的class类型、是否是抽象类、构造方法参数以及其他属性等</u>。当客户端向BeanFactory请求相应对象的时候，BeanFactory通过这些信息为客户端返回一个完备可用的对象实例。
 
-###### 1. 直接编码方式
+###### 1 直接编码方式
 
-`com.wenqi.springioc.beanfactory.BeanRegisterAndBind`
+`com.wenqi.springioc.beanfactory.HardCodeRegisterAndBind`
+
+###### 2 外部配置文件方式
+
+Spring IOC支持两种配置文件格式：Properties和XML文件格式 (当然可以自定义文件格式，前提是需要)。
+
+Spring IOC也提供了一个统一的配置文件处理方式：根据不同的配置文件格式，获取对应的`BeanDefinitionReader`实现类（如：`PropertiesBeanDefinitionReader`、`XmlBeanDefinitionReader`），由`BeanDefinitionReader`实现类负责将相应的配置文件内容读取并映射到`BeanDefinition`，然后将映射后的`BeanDefinition`注册到`BeanDefinitionRegistry`，之后`BeanDefinitionRegistry`完成Bean的注册和加载。对于`BeanDefinitionRegistry`来说，它只不过负责保管而已。
+
+> Properties配置格式的加载
+
+文件加载类：`org.springframework.beans.factory.support.PropertiesBeanDefinitionReader`
+
+test：`com.wenqi.springioc.beanfactory.PropertiesRegisterAndBind`
+
+> XML配置格式的加载
+
+XML配置格式是Spring支持最完整，功能最强大的表达方式。当然，一方面这得益于XML良好的语意表达能力；另一方面，就是Spring框架从开始就自始至终保持XML配置加载的统一性
+
+文件加载类：`org.springframework.beans.factory.xml.XmlBeanDefinitionReader`
+
+test：`com.wenqi.springioc.beanfactory.XMLRegisterAndBind`
+
+###### 3. 注解方式
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

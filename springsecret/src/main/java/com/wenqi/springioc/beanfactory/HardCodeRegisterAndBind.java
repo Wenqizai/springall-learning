@@ -1,7 +1,7 @@
 package com.wenqi.springioc.beanfactory;
 
-import com.wenqi.springioc.instance.DowJonesNewsListener;
-import com.wenqi.springioc.instance.DowJonesNewsPersister;
+import com.wenqi.springioc.instance.impl.DowJonesNewsListener;
+import com.wenqi.springioc.instance.impl.DowJonesNewsPersister;
 import com.wenqi.springioc.instance.FXNewsProvider;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.PropertyValue;
@@ -19,7 +19,7 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
  * @author liangwenqi
  * @date 2022/10/24
  */
-public class BeanRegisterAndBind {
+public class HardCodeRegisterAndBind {
     public static void main(String[] args) {
         // 同时具备 BeanFactory 和 BeanDefinitionRegistry 功能
         DefaultListableBeanFactory beanRegistry = new DefaultListableBeanFactory();

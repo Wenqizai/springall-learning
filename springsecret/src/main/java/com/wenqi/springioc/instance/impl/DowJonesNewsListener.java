@@ -1,4 +1,6 @@
-package com.wenqi.springioc.instance;
+package com.wenqi.springioc.instance.impl;
+
+import com.wenqi.springioc.instance.IFXNewsListener;
 
 /**
  * @author liangwenqi
