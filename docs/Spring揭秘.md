@@ -271,13 +271,57 @@ test：`com.wenqi.springioc.beanfactory.XMLRegisterAndBind`
 
 ###### 3. 注解方式
 
+编写配置类或配置的xml文件，扫描注解，注册/加载Bean。
+
+test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
+
+#### XML
+
+> 声明方式
+
+- 1. Spring 2.0 版本之前基于DTD文档声明
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" 
+	"http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+    
+</beans>
+```
+
+- 2. Spring 2.0版本之后以继续使用DTD方式的DOCTYPE进行配置文件格式的限定，又引入了基于XML Schema的文档声明。
+
+```xml
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util" 
+       xmlns:jee="http://www.springframework.org/schema/jee" 
+       xmlns:lang="http://www.springframework.org/schema/lang" 
+       xmlns:aop="http://www.springframework.org/schema/aop" 
+       xmlns:tx="http://www.springframework.org/schema/tx" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans 
+                           http://www.springframework.org/schema/beans/spring-beans-2.0.xsd 
+                           http://www.springframework.org/schema/util 
+                           http://www.springframework.org/schema/util/spring-util-2.0.xsd 
+                           http://www.springframework.org/schema/jee 
+                           http://www.springframework.org/schema/jee/spring-jee-2.0.xsd 
+                           http://www.springframework.org/schema/lang 
+                           http://www.springframework.org/schema/lang/spring-lang-2.0.xsd 
+                           http://www.springframework.org/schema/aop 
+                           http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+                           http://www.springframework.org/schema/tx
+                           http://www.springframework.org/schema/tx/spring-tx-2.0.xsd">
+</beans>
+```
 
 
 
+> `<beans>`
 
+<beans>是XML配置文件中最顶层的元素，它下面可以包含0或者1个<description>和多个<bean>以及<import>或者<alias>。
 
-
-
+![image-20221025140619156](Spring揭秘.assets/4.3标签beans与下层元素关系.png)
 
 
 

@@ -29,6 +29,6 @@ public class FXNewsProvider {
     }
 
     public void getAndPersistNews() {
-        System.out.println("getAndPersistNews method call ...");
+        System.out.println("FXNewsProvider: getAndPersistNews method call ...");
     }
 }
