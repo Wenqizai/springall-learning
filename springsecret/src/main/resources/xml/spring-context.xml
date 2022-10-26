@@ -39,4 +39,14 @@
     </bean>
 
 
+    <bean id="mockBO6" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg value="String_value"/>
+        <property name="dependency2" value="1234"/>
+        <property name="dependency3">
+            <list>
+                <value>string_value</value>
+            </list>
+        </property>
+    </bean>
+
 </beans>

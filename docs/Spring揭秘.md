@@ -409,7 +409,7 @@ beanName明确依赖关系的场合等。
 
 通过构造方法注入依赖对象时，可以使用标签`<constructor-arg>`。使用`<ref>`来指明容器将要引入的Bean实例。
 
-> 关于`<constructor-arg>`
+<!-- 关于<constructor-arg> -->
 
 有的时候对象具有多个构造方法， 仅仅使用`<constructor-arg ref="djNewsListener"/>`是无法准确找到对应的构造方法（寻找构造方法时，仅会找第一个符合的构造方法来注入）。这时需要引入`<constructor-arg/>`的type属性，用来标注特定的构造方法。
 
@@ -418,7 +418,244 @@ test：`com.wenqi.springioc.xml.ConstructArgInjectXmlTest`
 - 指定type属性
 - 指定index属性
 
+> setter方法注入
 
+通过setter方法注入依赖对象时，可以使用标签`<property>`。``<property>``提供一个name属性，用来指定注入Bean对应的实例变量名。之后通过`<ref>`或`<value>`来指定具体依赖的对象或值。
+
+其中`<constructor-arg>`和`<property>`可以同时配合使用。
+
+```xml
+<bean id="djNewsProvider" class="..FXNewsProvider">
+    <property name="newsListener">
+        <ref bean="djNewsListener"/>
+    </property>
+    <property name="newPersistener">
+        <ref bean="djNewsPersister"/>
+    </property>
+</bean>
+
+<!-- 另一种表达形式 -->
+<bean id="djNewsProvider" class="..FXNewsProvider">
+    <property name="newsListener" ref="djNewsListener"/>
+    <property name="newPersistener" ref="djNewsPersister"/>
+</bean>
+```
+
+> `<property>`和`<constructor-arg>`中可用的配置项
+
+Spring 提供了其他元素供使用：bean、ref、idref、value、null、list、set、map、props。
+
+- value
+
+可以使用type来指定原始类型及其包装类型。
+
+```xml
+<constructor-arg value="111111"/>
+<property name="attributeName" value="222222"/>
+```
+
+- ref
+
+通过ref的local、parent和bean属性来指定引用的对象的beanName是什么，ref没有子元素。
+
+1. local：指定与当前配置再同一个配置文件的对象定义的名称（可以获得XML解析器的id约束验证支持）
+2. parent：则只能指定位于当前容器的父容器中定义的对象引用；
+3. bean：则基本上通吃，所以，通常情况下，直接使用bean来指定对象引用就可以了。
+
+```xml
+<constructor-arg>
+    <ref local="djNewsPersister"/>
+</constructor-arg>
+
+<constructor-arg>
+    <ref parent="djNewsPersister"/>
+</constructor-arg>
+
+<constructor-arg>
+    <ref bean="djNewsPersister"/>
+</constructor-arg>
+```
+
+==注意：== BeanFactory可以分层次（通过实现`HierarchicalBeanFactory`接口），容器A在初始化的时候，可以首先加载容器B中的所有对象定义，然后再加载自身的对象定义，这样，容器B就成为了容器A的父容器，容器A可以引用容器B中的所有对象定义：
+
+```java
+BeanFactory parentContainer = new XmlBeanFactory(new ClassPathResource("父容器配置文件路径"));
+BeanFactory childContainer = new XmlBeanFactory(new ClassPathResource("子容器配置文件路径"), parentContainer);
+```
+
+childContainer中定义的对象，如果通过parent指定依赖，则只能引用parentContainer中的对象定义。
+
+- idref
+
+为当前对象注入所依赖的对象的名称，而不是引用，使用标签`<value>`和`<idref>`均可。
+
+使用idref才是最为合适的。因为使用idref，容器在解析配置的时候就可以帮你检查这个beanName到底是否存在，而不用等到运行时才发现这个beanName对应的对象实例不存在。
+
+```xml
+<!-- 为属性newsListenerBeanName注入bean djNewsListener 两种形式都可以，使用idref更合理 -->
+<property name="newsListenerBeanName">
+    <idref bean="djNewsListener"/>
+</property>
+
+<property name="newsListenerBeanName">
+    <value>djNewsListener</value>
+</property>
+```
+
+- 内部bean
+
+有时我们所依赖的bean A只会被另一个Bean B引用，或者bean A定义我们不想其他对象通过`<ref>`引用到它，这时候可以使用内嵌形式构建内部bean A来防止其他bean引用。如果其他bean需要引用这个beanA，那么可以考虑将bean A独立定义。
+
+一般来说内部bean是不需要指定id的。
+
+```xml
+<bean id="djNewsProvider" class="..FXNewsProvider">
+    <constructor-arg index="0">
+        <bean class="..impl.DowJonesNewsListener">
+        </bean>
+    </constructor-arg>
+    <constructor-arg index="1">
+        <ref bean="djNewsPersister"/>
+    </constructor-arg>
+</bean>
+```
+
+- list
+
+`<list>`对应注入对象类型为java.util.List及其子类或者数组类型的依赖对象，有序注入。
+
+```java
+public class MockDemoObject {
+    private List param1;
+    private String[] param2;
+    private Set valueSet;
+    private Map mapping;
+    // 相应的setter和getter方法
+}
+```
+
+```xml
+<property name="param1">
+    <list>
+        <value> something</value>
+        <ref bean="someBeanName"/>
+        <bean class="..."/>
+    </list>
+</property>
+<property name="param2">
+    <list>
+        <value>stringValue1</value>
+        <value>stringValue2</value>
+    </list>
+</property>
+```
+
+- set
+
+`<set>`对应注入Java Collection中类型为java.util.Set或者其子类的依赖对象，无序注入。
+
+```xml
+<property name="valueSet">
+    <set>
+        <value> something</value>
+        <ref bean="someBeanName"/>
+        <bean class="..."/>
+        <list>
+            ...
+        </list>
+    </set>
+</property>
+```
+
+- map
+
+与列表（list）使用数字下标来标识元素不同，映射（map）可以通过指定的键（key）来获取相应的值。对应注入java.util.Map或者其子类类型的依赖对象。
+
+每一个`<entry>`都需要为其指定一个键和一个值，key属性用于指定通常的简单类型的键，而key-ref则用于指定对象的引用作为键。
+
+```xml
+<property name="mapping">
+    <map>
+        <entry key="strValueKey">
+            <value>something</value>
+        </entry>
+        <entry>
+            <key>objectKey</key>
+            <ref bean="someObject"/>
+        </entry>
+        <entry key-ref="listKey">
+            <list>
+                ...
+            </list>
+        </entry>
+    </map>
+</property>
+
+<!-- 简化写法 -->
+<property name="valueSet">
+    <map>
+        <entry key="strValueKey" value="something"/>
+        <entry key-ref="" value-ref="someObject"/>
+        <entry key-ref="listKey">
+            <list>
+                ...
+            </list>
+        </entry>
+    </map>
+</property>
+```
+
+==警告：==往list，set，map注入不同类型的对象虽然很爽，用起来分分钟报`ClassCastException`。
+
+- props
+
+`<props>`是简化后了的<map>，或者说是特殊化的map，该元素对应配置类型为java.util.Properties的对象依赖。因为Properties只能指定String类型的键（key）和值
+
+```java
+public class MockDemoObject{
+    private Properties emailAddrs;
+    // 必要的setter和getter方法
+}
+```
+
+```xml
+<property name="valueSet">
+    <props>
+        <prop key="author">fujohnwang@gmail.com</prop>
+        <prop key="support">support@spring21.cn</prop>
+    </props>
+</property>
+```
+
+- null
+
+为属性注入null值，比如String不指定value的话，默认生成“”。若有属性为null，则可以使用`<null/>`
+
+```java
+public class MockDemoObject{
+    private String param1;
+    private Object param2;
+    // 必要的setter和getter方法
+}
+```
+
+```XML
+<property name="param1">
+    <null/>
+</property>
+<property name="param2">
+    <null/>
+</property>
+
+<!-- 
+// 实际上就相当于
+public class MockDemoObject{
+    private String param1 = null;
+    private Object param2 = null;
+    // 必要的setter和getter方法
+}
+-->
+```
 
 
 

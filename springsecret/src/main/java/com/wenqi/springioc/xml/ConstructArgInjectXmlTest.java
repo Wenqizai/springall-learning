@@ -15,5 +15,6 @@ public class ConstructArgInjectXmlTest {
 
         System.out.println(context.getBean("mockBO4"));
         System.out.println(context.getBean("mockBO5"));
+        System.out.println(context.getBean("mockBO6"));
     }
 }
