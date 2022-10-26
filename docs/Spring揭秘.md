@@ -317,23 +317,106 @@ test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
 
 
 
-> `<beans>`
+##### beans
 
-<beans>是XML配置文件中最顶层的元素，它下面可以包含0或者1个<description>和多个<bean>以及<import>或者<alias>。
+`<beans>` 是XML配置文件中最顶层的元素，它下面可以包含0或者1个 `<description>` 和多个 `<bean>` 以及 `<import>` 或者 `<alias>`。
 
 ![image-20221025140619156](Spring揭秘.assets/4.3标签beans与下层元素关系.png)
 
+> `<beans>`的属性值
 
+`<beans>`标签属性，可以提取`<bean>`标签中的重合的设置，减少每个<bean>中指定的不必要工作。
 
+1. **default-lazy-init**：默认false，是否对所有的 `<bean>` 进行延迟初始化；
+2. **default-autowire：**可以取值为`no`, `byName`, `byType`, `constructor`以及`autodetect`。默认值为`no`，如果使用自动绑定的话，用来指定全体bean使用哪一种默认绑定方式；
+3. **default-dependency-check**：可以取值`none`，`objects`，`simple`以及`all`。，默认值为none，即不做依赖检查；
+4. **default-init-method：**如果`<bean>`中有相同的初始化方法，那么可以提取到`<beans>`中，统一指定方法；
+5. **default-destroy-method：**如果`<bean>`中有相同的对象销毁方法，那么可以提取到`<beans>`中，统一指定方法；
 
+> description/import/alias
 
+通常情况下，这几个元素位于`<beans>`的下级，都不是必须的，仅作了解。
 
+- **description**
 
+**`<description>`**：在配置的文件中指定一些描述性的信息。通常情况下，该元素是省略的。
 
+- **import**
 
+通常情况下，可以根据模块功能或者层次关系，将配置信息分门别类地放到多个配置文件中。在想加载主要配置文件，并将主要配置文件所依赖的配置文件同时加载时，可以在这个主要的配置文件中通过`<import>`元素对其所依赖的配置文件进行引用。
 
+即A.xml的bean引用了B.xml的bean，文件间相互引用，可以使用`<import>`进行引用。
 
+```xml
+<import resource="B.xml"/>
+```
 
+- **alias**
+
+<bean>起别名。
+
+```xml
+<alias name="djNewsListener" alias="/news/djNewsListener"/>
+<alias name="djNewsListener" alias="dowJonesNewsListener"/>
+```
+
+##### bean
+
+```xml
+<bean id="djNewsListener" 
+      name="/news/djNewsListener,dowJonesNewsListener"
+      class="..impl.DowJonesNewsListener">
+</bean>
+```
+
+###### bean的属性
+
+- **id**
+
+每个注册到容器里的对象都需要唯一标识来区分开其他的bean，id属性来指定当前注册对象的beanName是什么。
+
+并非任何情况下都需要指定每个`<bean>`的id，有些情况下，id可以省略，比如后面会提到的内部`<bean>`以及不需要根据
+beanName明确依赖关系的场合等。
+
+除了id指定标识外，使用name属性来指定`<bean>`的别名（alias）。与id属性相比，name属性的灵活之处在于，name可以使用id不能使用的一些字符，比如/。而且还可以通过逗号、空格或者冒号分割指定多个name。name的作用跟`<alias>`标签作用相同。
+
+- **class**
+
+每个注册到容器的对象都需要通过`<bean>`元素的class属性指定其类型，否则，容器可不知道这个对象到底是何方神圣。在大部分情况下，<u>该属性是必须的</u>。仅在少数情况下不需要指定，如后面将提到的在使用抽象配置模板的情况下
+
+###### 相互依赖的bean
+
+更多时候，Bean之间是相互依赖，共同协作构建的。下面看一下Spring的IoC容器的XML配置中，应该如何表达这种依赖性。
+
+> 构建方法注入
+
+```xml
+<bean id="djNewsProvider" class="..FXNewsProvider">
+    <constructor-arg>
+        <ref bean="djNewsListener"/>
+    </constructor-arg>
+    <constructor-arg>
+        <ref bean="djNewsPersister"/>
+    </constructor-arg>
+</bean>
+
+<!-- 另一种表达方式 -->
+<bean id="djNewsProvider" class="..FXNewsProvider">
+    <constructor-arg ref="djNewsListener"/>
+    <constructor-arg ref="djNewsPersister"/>
+</bean>
+```
+
+通过构造方法注入依赖对象时，可以使用标签`<constructor-arg>`。使用`<ref>`来指明容器将要引入的Bean实例。
+
+> 关于`<constructor-arg>`
+
+有的时候对象具有多个构造方法， 仅仅使用`<constructor-arg ref="djNewsListener"/>`是无法准确找到对应的构造方法（寻找构造方法时，仅会找第一个符合的构造方法来注入）。这时需要引入`<constructor-arg/>`的type属性，用来标注特定的构造方法。
+
+test：`com.wenqi.springioc.xml.ConstructArgInjectXmlTest`
+
+- 指定type属性
+- 指定index属性
 
 
 

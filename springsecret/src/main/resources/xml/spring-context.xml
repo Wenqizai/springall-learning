@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd 
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-2.5.xsd 
+        http://www.springframework.org/schema/tx 
+        http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+    <bean id="mockBO" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg>
+            <value>111111</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="mockBO2" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg>
+            <value>222222</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="mockBO3" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg type="int">
+            <value>333333</value>
+        </constructor-arg>
+    </bean>
+
+    <!-- 使用默认的index和指定的index -->
+    <bean id="mockBO4" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg value="11111"/>
+        <constructor-arg value="22222"/>
+    </bean>
+    <bean id="mockBO5" class="com.wenqi.springioc.xml.MockBusinessObject">
+        <constructor-arg index="1" value="11111"/>
+        <constructor-arg index="0" value="22222"/>
+    </bean>
+
+
+</beans>
