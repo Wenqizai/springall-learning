@@ -657,5 +657,117 @@ public class MockDemoObject{
 -->
 ```
 
+> depend on
+
+容器在初始化当前bean定义时，会根据这些元素所标记的依赖关系，首先实例化当前bean定义所依赖其他bean定义。如果某些时候，我们没有通过类似`<ref>`的元素明确指定对象A依赖与对象B时，我们可以使用`depend on`属性来指定依赖关系。
+
+假设ClassA需要使用log4j，那么ClassA在bean定义时必须在容器初始化自身实例时，先实例化log4j相关的模块（SystemConfigurationSetup），如下所示：
+
+```java
+public class SystemConfigurationSetup {
+  static
+  {
+    DOMConfigurator.configure("配置文件路径");
+    // 其他初始化代码
+  }
+}
+```
+
+```xml
+<bean id="classAInstance" class="...ClassA" depends-on="configSetup"/>
+<bean id="configSetup" class="SystemConfigurationSetup"/>
+
+<!-- 如果ClassA依赖多个实例 -->
+<bean id="classAInstance" class="...ClassA" depends-on="configSetup,configSetup2,..."/>
+<bean id="configSetup" class="SystemConfigurationSetup"/>
+<bean id="configSetup2" class="SystemConfigurationSetup2"/>
+```
+
+> 自动绑定 autowire
+
+上述都是手动指定bean的依赖关系进行绑定。下面来介绍一下`<bean>`提供autowire属性，自动绑定某些bean。Spring提供了5中自动绑定模式：
+
+- no：默认模式，不采用任何形式的自动绑定，完全依赖手工配置
+
+```xml
+<!-- 以下两种写法是等效的 -->
+<bean id="beanName" class="..."/>
+<bean id="beanName" class="..." autowire="no"/>
+```
+
+- byName：
+
+按照类声明的实例变量的名称，与bean定义的beanName的值进行匹配，符合的bean定义将被自动绑定到当前的实例变量上。
+
+如下：xml定义了bean emphasisAttribute，同时Foo的属性名为emphasisAttribute，同时符合才进行自动绑定。
+
+```java
+public class Foo {
+  private Bar emphasisAttribute;
+  // 相应的setter方法定义
+}
+
+public class Bar {
+}
+```
+
+```xml
+<bean id="fooBean" class="...Foo" autowire="byName"></bean>
+<bean id="emphasisAttribute" class="...Bar"></bean>
+```
+
+- byType
+
+如果指定当前Bean定义的autowire模式为byType，那么容器会根据当前bean定义类型，分析依赖对象类型，然后到容器中查找所有的bean并找到与依赖对象类型相同的bean定义，然后将该bean自动绑定到定义的bean中。
+
+byName和byType的演示是相同的，只不过将`autowire="byName"`换成`autowire="byType"`
+
+- constructor
+
+byName和byType类型的自动绑定模式是针对property的自动绑定，而constructor类型是针对构造方法的类型进行的自动绑定，而不是实例属性的类型，绑定模式是byType类型。
+
+```java
+public class Foo {
+  private Bar bar;
+  public Foo(Bar arg) {
+    this.bar = arg;
+  }
+}
+
+public class Bar {
+}
+```
+
+```xml
+<bean id="foo" class="...Foo" autowire="constructor"></bean>
+<bean id="bar" class="...Bar"></bean>
+```
+
+- autodetect
+
+这种模式是byType和constructor模式的结合体，如果对象拥有默认无参数的构造方法，容器会优先考虑byType的自动绑定模式。否则，会使用constructor模式。当然，如果通过构造方法注入绑定后还有其他属性没有绑定，容器也会使用byType对剩余的对象属性进行自动绑定。
+
+> 手动指定绑定关系 or 自动绑定关系？
+
+- 优点：
+
+1. 自动绑定可以减少手动配置的繁琐；
+2. 自动绑定在添加新的依赖时，无需手动更改配置信息。
+
+- 缺点：
+
+1. 自动绑定不如指定绑定的依赖关系一目了然；
+2. 会出现一些不可预知行为（不过启动阶段可以发现，问题不大）。比如使用byType时，新增了一个相同类型的bean定义；使用byName是，新增相同的beanName或者替换了等等；
+3. 自动绑定Spring IDE的支持不是很友好。
+
+==注意：== 
+
+1. 手工明确指定的绑定关系总会覆盖自动绑定模式的行为；
+2. 自动绑定只应用与**原生类型、String类型和Classes类型之外**的对象类型，对于原生类型、String类型和Classes类型以及这些类型的数组，应用自动绑定类型是无效的。
+
+
+
+
+
 
 
