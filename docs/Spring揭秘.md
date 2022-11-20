@@ -765,7 +765,57 @@ public class Bar {
 1. 手工明确指定的绑定关系总会覆盖自动绑定模式的行为；
 2. 自动绑定只应用与**原生类型、String类型和Classes类型之外**的对象类型，对于原生类型、String类型和Classes类型以及这些类型的数组，应用自动绑定类型是无效的。
 
+> dependency-check
 
+`<bean>`的dependency-check属性对其所依赖的对象进行最终检查，该功能主要与自动绑定结合使用，可以保证当自动绑定完成后，最终确认每个对象所依赖的对象是否按照所预期的那样被注入。
+
+- none：默认，不做依赖检查；
+- simple：对简单属性类型以及相关的collection进行依赖检查，对象引用类型的依赖除外；
+- object：只对对象引用类型依赖进行检查；
+- all：simple和object相结合，基本上是所有类型。
+
+> lazy-init
+
+我们直到ApplicationContext容器启动时会对所有的bean进行实例化，如果我们不想某些bean启动时进行实例化，这时`lazy-init`就派上用场了。
+
+指定了`lazy-init`不一定按照我们的预期生效，如下，当`lazy-init-bean`被`not-lazy-init-bean`所依赖时，`lazy-init-bean`并不会延迟初始化。
+
+```xml
+<bean id="lazy-init-bean" class="..." lazy-init="true"/>
+<bean id="not-lazy-init-bean" class="...">
+  <property name="propName">
+    <ref bean="lazy-init-bean"/>
+  </property>
+</bean>
+```
+
+> 继承: parent属性
+
+parent属性与abstract属性结合使用，达到将响应bean定义模板化的目的。
+
+```xml
+<bean id="newsProviderTemplate" abstract="true">
+  <property name="newPersistener">
+    <ref bean="djNewsPersister"/>
+  </property>
+</bean>
+
+<bean id="superNewsProvider" parent="newsProviderTemplate" class="..FXNewsProvider">
+  <property name="newsListener">
+    <ref bean="djNewsListener"/>
+  </property>
+</bean>
+
+<bean id="subNewsProvider" parent="newsProviderTemplate" class="..SpecificFXNewsProvider">
+  <property name="newsListener">
+    <ref bean="specificNewsListener"/>
+  </property>
+</bean>
+```
+
+newsProviderTemplate的bean定义通过abstract属性声明为true，说明这个bean定义不需要实例化。该bean定义只是一个配置模板，不对应任何对象。`superNewsProvider`和`subNewsProvider`通过parent指向这个模板定义，就拥有了该模板定义的所有属性配置。
+
+> scope
 
 
 

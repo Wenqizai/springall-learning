@@ -49,4 +49,25 @@
         </property>
     </bean>
 
+
+    <!-- 继承 -->
+    <bean id="djNewsListener" class="com.wenqi.springioc.instance.impl.DowJonesNewsListener"/>
+    <bean id="djNewsPersister" class="com.wenqi.springioc.instance.impl.DowJonesNewsPersister"/>
+    <bean id="specificFXNewsListener" class="com.wenqi.springioc.instance.impl.SpecificFXNewsListener"/>
+
+    <bean id="superNewsProvider" class="com.wenqi.springioc.instance.FXNewsProvider">
+        <property name="newsListener">
+           <ref bean="djNewsListener"/>
+        </property>
+        <property name="newPersistener">
+            <ref bean="djNewsPersister"/>
+        </property>
+    </bean>
+
+    <bean id="subNewsProvider" class="com.wenqi.springioc.instance.SpecificFXNewsProvider" parent="subNewsProvider">
+        <property name="newsListener">
+           <ref bean="specificFXNewsListener"/>
+        </property>
+    </bean>
+
 </beans>
