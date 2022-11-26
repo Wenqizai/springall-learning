@@ -10,36 +10,36 @@
         http://www.springframework.org/schema/tx 
         http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
 
-    <bean id="mockBO" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg>
             <value>111111</value>
         </constructor-arg>
     </bean>
 
-    <bean id="mockBO2" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO2" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg>
             <value>222222</value>
         </constructor-arg>
     </bean>
 
-    <bean id="mockBO3" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO3" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg type="int">
             <value>333333</value>
         </constructor-arg>
     </bean>
 
     <!-- 使用默认的index和指定的index -->
-    <bean id="mockBO4" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO4" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg value="11111"/>
         <constructor-arg value="22222"/>
     </bean>
-    <bean id="mockBO5" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO5" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg index="1" value="11111"/>
         <constructor-arg index="0" value="22222"/>
     </bean>
 
 
-    <bean id="mockBO6" class="com.wenqi.springioc.xml.MockBusinessObject">
+    <bean id="mockBO6" class="com.wenqi.springioc.instance.xml.MockBusinessObject">
         <constructor-arg value="String_value"/>
         <property name="dependency2" value="1234"/>
         <property name="dependency3">

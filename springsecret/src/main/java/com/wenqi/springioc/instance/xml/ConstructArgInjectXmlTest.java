@@ -1,4 +1,4 @@
-package com.wenqi.springioc.xml;
+package com.wenqi.springioc.instance.xml;
 
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 

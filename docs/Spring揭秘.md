@@ -817,6 +817,80 @@ newsProviderTemplate的bean定义通过abstract属性声明为true，说明这�
 
 > scope
 
+scope：作用域，包含singleton、prototype，其中request、session和global session类型只能再Web应用中使用。
+
+- singleton
+
+默认的scope，在Spring IOC容器中只存在一个实例，所有对该对象的引用将共享这个实例。生命周期是从容器启动，到它第一次被请求而实例化开始，只要容器不销毁或者退出，该类型bean的单一实例就会一直存活。
+
+```xml
+<!-- DTD or XSD -->
+<bean id="mockObject1" class="...MockBusinessObject"/>
+<!-- DTD -->
+<bean id="mockObject1" class="...MockBusinessObject" singleton="true"/>
+<!-- XSD -->
+< bean id="mockObject1" class="...MockBusinessObject" scope="singleton"/>
+```
+
+- prototype
+
+容器在接到该类型对象的请求的时候，会每次都重新生成一个新的对象实例给请求方。
+
+prototype类型的对象的实例化以及属性设置等工作都是由容器负责的，但是只要准备完毕，并且对象实例返回给请求方之后，容器就不再拥有当前返回对象的引用，**请求方需要自己负责当前返回对象的后继生命周期的管理工作，包括该对象的销毁**。
+
+```xml
+<!-- DTD -->
+<bean id="mockObject1" class="...MockBusinessObject" singleton="false"/>
+<!-- XSD -->
+<bean id="mockObject1" class="...MockBusinessObject" scope="prototype"/>
+```
+
+- request
+
+Spring容器，即XmlWebApplicationContext会为每个HTTP请求创建一个全新的Request-Processor对象供当前请求使用，当请求结束后，该对象实例的生命周期即告结束。
+
+```xml
+<bean id="requestProcessor" class="...RequestProcessor" scope="request"/>
+```
+
+- session
+
+Spring容器会为每个独立的session创建属于它们自己的全新的UserPreferences对象实例。与
+request相比，除了拥有session scope的bean的实例具有比request scope的bean可能更长的存活时间，其他方面真是没什么差别。
+
+```xml
+<bean id="userPreferences" class="com.foo.UserPreferences" scope="session"/>
+```
+
+- global session
+
+global session只有应用在基于portlet的Web应用程序中才有意义，它映射到portlet的global范围的
+session。如果在普通的基于servlet的Web应用中使用了这个类型的scope，容器会将其作为普通的session类型的scope对待。
+
+```xml
+<bean id="userPreferences" class="com.foo.UserPreferences" scope="globalSession"/>
+```
+
+- 自定义scope类型
+
+实现scope接口，必须实现get和remove方法。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
