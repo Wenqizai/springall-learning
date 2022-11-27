@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd 
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-2.5.xsd 
+        http://www.springframework.org/schema/tx 
+        http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+    <!-- 1. 静态工厂注入bean方式 -->
+    <bean id="foo" class="com.wenqi.springioc.instance.xml.factory.Foo">
+        <property name="barInterface" ref="bar"/>
+    </bean>
+
+    <!-- 无参 -->
+    <bean id="bar" class="com.wenqi.springioc.instance.xml.factory.StaticBarInterfaceFactory" factory-method="getInstance"/>
+    <!-- 带参 -->
+    <bean id="barWithArg" class="com.wenqi.springioc.instance.xml.factory.StaticBarInterfaceFactory" factory-method="getInstance">
+        <constructor-arg>
+            <ref bean="foobar"/>
+        </constructor-arg>
+    </bean>
+    <bean id="foobar" class="com.wenqi.springioc.instance.xml.factory.FooBar"/>
+
+    <!-- 2. 非静态工厂注入bean方式 -->
+    <bean id="fooNoStatic" class="com.wenqi.springioc.instance.xml.factory.Foo">
+        <property name="barInterface" ref="bar"/>
+    </bean>
+    <!-- NoStaticBarInterfaceFactory 作为正常的bean注入容器中 -->
+    <bean id="barFactory" class="com.wenqi.springioc.instance.xml.factory.NoStaticBarInterfaceFactory"/>
+    <bean id="barNoStatic" factory-bean="barFactory" factory-method="getInstance"/>
+
+    <!-- 3. FactoryBean -->
+    <bean id="nextDayDateDisplayer" class="com.wenqi.springioc.instance.xml.factory.factorybean.NextDayDateDisplayer">
+        <property name="dateOfNextDay">
+            <ref bean="nextDayDate"/>
+        </property>
+    </bean>
+    <bean id="nextDayDate" class="com.wenqi.springioc.instance.xml.factory.factorybean.NextDayDateFactoryBean"/>
+</beans>

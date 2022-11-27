@@ -903,17 +903,70 @@ beanFactory.registerScope("thread", threadScope);
 </bean>
 ```
 
+##### 工厂方法
 
+很多时候我们需要依赖第三方库，并且需要实例化相关类。此时我们可以通过工厂方法（Factory Method）模式，提供一个工厂类来是实例具体的接口实现类。这时当实现类有变更的话，只需要修改工厂方法类，而使用对象不需要改动，做到接口鱼实现类解耦。
 
+###### 静态工厂
 
+`com.wenqi.springioc.instance.xml.factory.StaticBarInterfaceFactory`
 
+```xml
+<bean id="bar" class="com.wenqi.springioc.instance.xml.factory.StaticBarInterfaceFactory" factory-method="getInstance"/>
+```
 
+class指定静态方法工厂类，factory-method指定工厂方法名称，然后，容器调用该静态方法工厂类的指定工厂方法（getInstance），并返回方法调用后的结果，即BarInterfaceImpl的实例。
 
+###### 非静态工厂
 
+`com.wenqi.springioc.instance.xml.factory.NoStaticBarInterfaceFactory`
 
+```xml
+<bean id="fooNoStatic" class="com.wenqi.springioc.instance.xml.factory.Foo">
+  <property name="barInterface" ref="bar"/>
+</bean>
+<!-- NoStaticBarInterfaceFactory 作为正常的bean注入容器中 -->
+<bean id="barFactory" class="com.wenqi.springioc.instance.xml.factory.NoStaticBarInterfaceFactory"/>
+<bean id="barNoStatic" factory-bean="barFactory" factory-method="getInstance"/>
+```
 
+NonStaticBarInterfaceFactory是作为正常的bean注册到容器的，而barNoStatic的定义则与静态工厂方法的定义有些不同。现在使用factory-bean属性来指定工厂方法所在的工厂类实例，而不是通过class属性来指定工厂方法所在类的类型。
 
+如果barFactory带参数，处理方法与静态工厂处理方法一致。
 
+###### FactoryBean
+
+FactoryBean是Spring容器提供的一种可以扩展容器对象实例化逻辑的接口，请不要将其与容器名称BeanFactory相混淆。FactoryBean，其主语是Bean，定语为Factory，也就是说，它本身与其他注册到容器的对象一样，只是一个Bean而已，只不过，这种类型的Bean本身就是生产对象的工厂（Factory）。
+
+当某些对象的实例化过程过于烦琐，通过XML配置过于复杂，或者，某些第三方库不能直接注册到Spring容器的时候，就可以实现`org.spring.framework.beans.factory.FactoryBean`接口，给出自己的对象实例化逻辑代码。相当于Spring为我们提供了Bean实例化的标准步骤。
+
+```java
+public interface FactoryBean {
+  // 返回Factory生产的实例
+  Object getObject() throws Exception;
+  
+  // 返回getObject()方法所返回的对象的类型，如果预先无法确定，则返回null
+  Class getObjectType();
+  
+  // 是否要以singleton形式存在于容器中
+  boolean isSingleton();
+}
+```
+
+- 示例
+
+`com.wenqi.springioc.instance.xml.factory.factorybean.NextDayDateFactoryBean`
+
+FactoryBean类型的bean定义，通过正常的id引用，容器返回BeanFactory的是FactoryBean所“生产”的对象类型，而非FactoryBean实现本身。如果一定要取得FactoryBean本身的话，可以通过在bean定义的id之前加前缀&来达到目的。
+
+```txt
+// 一些比较常见的FactoryBean实现
+JndiObjectFactoryBean
+LocalSessionFactoryBean
+SqlMapClientFactoryBean
+ProxyFactoryBean
+TransactionProxyFactoryBean
+```
 
 
 
