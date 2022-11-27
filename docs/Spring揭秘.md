@@ -1,4 +1,4 @@
-# IOC
+#  IOC
 
 ## 概念
 
@@ -873,7 +873,37 @@ session。如果在普通的基于servlet的Web应用中使用了这个类型的
 
 - 自定义scope类型
 
-实现scope接口，必须实现get和remove方法。
+1. 实现`org.springframework.beans.factory.config.Scope`接口，必须实现get和remove方法；
+2. 将自定义实现的`com.wenqi.springioc.instance.xml.scope.ThreadScope`注册到容器中；
+
+```java
+Scope threadScope = new ThreadScope();
+beanFactory.registerScope("thread", threadScope);
+```
+
+3. 使用自定义的scope
+
+```xml
+<bean id="beanName" class="..." scope="thread"/>
+```
+
+除此之外，Spring还专门提供了用于同意注册自定义Scope的实现：`org.springframework.beans.factory.config.CustomScopeConfigurer`
+
+```xml
+<bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+  <property name="scopes">
+    <map>
+      <entry key="thread" value="com.wenqi.springioc.instance.xml.scope.ThreadScope"/>
+    </map>
+  </property>
+</bean>
+
+<bean id="beanName" class="..." scope="thread">
+  <aop:scoped-proxy/>
+</bean>
+```
+
+
 
 
 
