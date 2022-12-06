@@ -968,9 +968,11 @@ ProxyFactoryBean
 TransactionProxyFactoryBean
 ```
 
+##### 方法注入/替换
 
+方法注入（Method Injection）以及方法替换（Method Replacement）
 
-
+`com.wenqi.springioc.instance.method.MethodInjectDemo`
 
 
 

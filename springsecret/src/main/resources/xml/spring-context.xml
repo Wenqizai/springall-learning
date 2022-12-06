@@ -64,9 +64,17 @@
         </property>
     </bean>
 
-    <bean id="subNewsProvider" class="com.wenqi.springioc.instance.SpecificFXNewsProvider" parent="subNewsProvider">
+    <bean id="subNewsProvider" class="com.wenqi.springioc.instance.SpecificFXNewsProvider" parent="superNewsProvider">
         <property name="newsListener">
            <ref bean="specificFXNewsListener"/>
+        </property>
+    </bean>
+
+    <!-- 模拟prototype模式的坑 -->
+    <bean id="newsBean" class="com.wenqi.springioc.instance.method.FXNewsBean" scope="prototype"/>
+    <bean id="mockPersister" class="com.wenqi.springioc.instance.method.MockNewsPersister">
+        <property name="newsBean">
+            <ref bean="newsBean"/>
         </property>
     </bean>
 
