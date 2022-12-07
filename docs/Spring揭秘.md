@@ -972,7 +972,34 @@ TransactionProxyFactoryBean
 
 方法注入（Method Injection）以及方法替换（Method Replacement）
 
+延申问题：为什么scope类型是prototype，对象调用同一个方法都是同一个bean？
+
 `com.wenqi.springioc.instance.method.MethodInjectDemo`
+
+解析：当Bean的属性第一个实例注入之后，该Bean再也没有重新向容器申请新的实例，所以Bean的属性都是同一个应用，无论该属性是singleton还是prototype。
+
+如果想要每次获取的属性都重新创建一个新的实例，可以参考一下方法：
+
+1. 方法注入（Cglib动态生成一个子类实现，从而替代当前对象，重写方法）
+
+```xml
+<lookup-method name="getNewsBean" bean="newsBean"/>
+```
+
+2. 每次从容器中获取
+
+```txt
+# 实现接口
+org.springframework.beans.factory.BeanFactoryAware
+org.springframework.beans.factory.config.ObjectFactoryCreatingFactoryBean
+org.springframework.beans.factory.config.ServiceLocatorFactoryBean
+```
+
+3. 方法替换
+
+```xml
+<replaced-method name="getAndPersistNews" replacer="fXNewsProviderMethodReplacer"/>
+```
 
 
 

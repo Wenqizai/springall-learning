@@ -78,4 +78,29 @@
         </property>
     </bean>
 
+    <bean id="mockPersister2" class="com.wenqi.springioc.instance.method.MockNewsPersister2"/>
+
+    <bean id="newsBeanFactory" class="org.springframework.beans.factory.config.ObjectFactoryCreatingFactoryBean">
+        <property name="targetBeanName">
+            <idref bean="newsBean"/>
+        </property>
+    </bean>
+    <bean id="mockPersister3" class="com.wenqi.springioc.instance.method.MockNewsPersister3">
+        <property name="newsBeanFactory">
+            <ref bean="newsBeanFactory"/>
+        </property>
+    </bean>
+
+    <!-- 方法替换 -->
+    <bean id="methodReplaceFXNewsProvider" class="com.wenqi.springioc.instance.FXNewsProvider">
+        <property name="newsListener">
+            <ref bean="djNewsListener"/>
+        </property>
+        <property name="newPersistener">
+            <ref bean="djNewsPersister"/>
+        </property>
+        <replaced-method name="getAndPersistNews" replacer="fXNewsProviderMethodReplacer"/>
+    </bean>
+    <bean id="fXNewsProviderMethodReplacer" class="com.wenqi.springioc.instance.method.FXNewsProviderMethodReplacer"/>
+
 </beans>
