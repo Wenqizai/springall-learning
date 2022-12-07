@@ -1003,6 +1003,46 @@ org.springframework.beans.factory.config.ServiceLocatorFactoryBean
 
 
 
+### 容器
+
+![image-20221207163705817](Spring揭秘.assets/容器功能实现的各个阶段.png)
+
+#### 容器启动
+
+容器启动时，首先加载**Configuration MetaData**（借助工具类BeanDefinitionReader），并对其进行解析和分析，组装成bean定义的必要信息**BeanDefinition**，并注册到相应的**BeanDefinitionRegistry**，此时容器启动工作就完成了。
+
+- 容器启动时，我可以干
+
+Spring提供了一种叫做BeanFactoryPostProcessor的容器扩展机制。该机制允许我们在容器实例化相应对象之前，对注册到容器的BeanDefinition所保存的信息做相应的修改。这就相当于在容器实现的第一阶段最后加入一道工序，让我们对最终的BeanDefinition做一些额外的操作，比如修改其中bean定义的某些属性，为bean定义增加其他信息等。
+
+
+
+#### Bean实例化阶段
+
+当某个请求通过容器的getBean请求对象时，或者因依赖关系容器需要隐式地调用getBean方法时，就会触发Bean的实例化。
+
+首先容器会首先检查所请求的对象之前是否已经初始化。如果没有，则会根据注册的BeanDefinition所提供的信息实例化被请求对象，并为其注入依赖。如果该对象实现了某些回调接口，也会根据回调接口的要求来装配它。当该对象装配完毕之后，容器会立即将其返回请求方使用。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
