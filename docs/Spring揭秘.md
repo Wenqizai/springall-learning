@@ -1015,7 +1015,65 @@ org.springframework.beans.factory.config.ServiceLocatorFactoryBean
 
 Spring提供了一种叫做BeanFactoryPostProcessor的容器扩展机制。该机制允许我们在容器实例化相应对象之前，对注册到容器的BeanDefinition所保存的信息做相应的修改。这就相当于在容器实现的第一阶段最后加入一道工序，让我们对最终的BeanDefinition做一些额外的操作，比如修改其中bean定义的某些属性，为bean定义增加其他信息等。
 
+- 借助Spring提供的BeanFactoryPostProcessor实现
 
+> PropertyPlaceholderConfigurer
+
+我们不想一些业务的配置信息混合到spring xml配置中，希望把这些信息放到统一的properties文件中集中管理。PropertyPlaceholderConfigurer允许我们在XML配置文件中使用占位符（PlaceHolder），即`${}`
+
+**plus:**
+
+PropertyPlaceholderConfigurer不仅可以从properties文件中加载配置项，同时还会检查Java的System类中的Properties，可以通过setSystemPropertiesMode()或者setSystemProper-tiesModeName()来控制是否加载或者覆盖System相应Properties的行为。
+
+```java
+/** Never check system properties. */
+public static final int SYSTEM_PROPERTIES_MODE_NEVER = 0;
+
+/**
+ * Check system properties if not resolvable in the specified properties.
+ * This is the default.
+ */
+public static final int SYSTEM_PROPERTIES_MODE_FALLBACK = 1;
+
+/**
+ * Check system properties first, before trying the specified properties.
+ * This allows system properties to override any other property source.
+ */
+public static final int SYSTEM_PROPERTIES_MODE_OVERRIDE = 2;
+```
+
+> PropertyOverrideConfigurer
+
+当我们想要用自定义的配置项来覆盖xml定义的配置项，这时可以使用`PropertyOverrideConfigurer`。
+
+比如：
+
+1. 定义properties文件
+2. 语法：beanName.propertyName
+3. 多行则最后一行生效
+
+```properties
+beanName.propertyName=value
+```
+
+> CustomEditorConfigurer
+
+`PropertyPlaceholderConfigurer`和`PropertyOverrideConfigurer`都是通过修改`BeanDefinition`中的属性来达到目的。`CustomEditorConfigurer`只是辅助性地将后期会用到的信息注册到容器，对BeanDefinition没有做任何变动。
+
+我们知道定义的xml/properties等配置只是字符串解析到`BeanDefinition`，但是我们使用Bean时需要的是一个个不同类型的对象，这时候Spring就自动完成类型转换相关的动作。当我们需要指定特定类型转换时，我们可以通过CustomEditorConfigurer告知容器，以便容器在适当的时机使用到适当的PropertyEditor。
+
+```txt
+// spring提供的部分PropertyEditor
+StringArrayPropertyEditor
+ClassEditor
+FileEditor
+```
+
+**Plus：**
+
+-> 自定义PropertyEditor，需要对yyyy/MM/dd形式的日期格式转换提供支持。
+
+com.wenqi.springioc.postprocessor.DatePropertyEditor
 
 #### Bean实例化阶段
 

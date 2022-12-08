@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-2.5.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>postprocessor/conf/jdbc.properties</value>
+                <value>postprocessor/conf/mail.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+        <property name="url">
+            <value>${jdbc.url}</value>
+        </property>
+        <property name="driverClassName">
+            <value>${jdbc.driver}</value>
+        </property>
+        <property name="username">
+            <value>${jdbc.username}</value>
+        </property>
+        <property name="password">
+            <value>${jdbc.password}</value>
+        </property>
+        <property name="testOnBorrow">
+            <value>true</value>
+        </property>
+        <property name="testOnReturn">
+            <value>true</value>
+        </property>
+        <property name="testWhileIdle">
+            <value>true</value>
+        </property>
+        <property name="minEvictableIdleTimeMillis">
+            <value>180000</value>
+        </property>
+        <property name="timeBetweenEvictionRunsMillis">
+            <value>360000</value>
+        </property>
+        <property name="validationQuery">
+            <value>SELECT 1</value>
+        </property>
+        <property name="maxTotal">
+            <value>100</value>
+        </property>
+    </bean>
+
+
+    <bean id="dateFoo" class="com.wenqi.springioc.postprocessor.DateFoo">
+        <property name="date">
+            <value>2022/12/08</value>
+        </property>
+    </bean>
+
+    <bean class="org.springframework.beans.factory.config.CustomEditorConfigurer">
+        <property name="customEditors">
+            <map>
+                <entry key="java.util.Date">
+                    <ref bean="datePropertyEditor"/>
+                </entry>
+            </map>
+        </property>
+    </bean>
+    <bean id="datePropertyEditor" class="com.wenqi.springioc.postprocessor.DatePropertyEditor">
+        <property name="datePattern">
+            <value>yyyy/MM/dd</value>
+        </property>
+    </bean>
+
+
+    <bean class="org.springframework.beans.factory.config.CustomEditorConfigurer">
+        <property name="propertyEditorRegistrars">
+            <list>
+                <ref bean="datePropertyEditorRegistrar"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="datePropertyEditorRegistrar" class="com.wenqi.springioc.postprocessor.DatePropertyEditorRegistrar">
+        <property name="propertyEditor">
+            <ref bean="datePropertyEditor"/>
+        </property>
+    </bean>
+
+</beans>
