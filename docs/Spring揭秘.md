@@ -1073,7 +1073,7 @@ FileEditor
 
 -> 自定义PropertyEditor，需要对yyyy/MM/dd形式的日期格式转换提供支持。
 
-com.wenqi.springioc.postprocessor.DatePropertyEditor
+`com.wenqi.springioc.postprocessor.DatePropertyEditor`
 
 #### Bean实例化阶段
 
@@ -1081,27 +1081,157 @@ com.wenqi.springioc.postprocessor.DatePropertyEditor
 
 首先容器会首先检查所请求的对象之前是否已经初始化。如果没有，则会根据注册的BeanDefinition所提供的信息实例化被请求对象，并为其注入依赖。如果该对象实现了某些回调接口，也会根据回调接口的要求来装配它。当该对象装配完毕之后，容器会立即将其返回请求方使用。
 
+**注：**BeanFactory在getBean时实例化Bean，而ApplicationContext在启动时就初始化bean。
+
+![image-20221209172413422](Spring%E6%8F%AD%E7%A7%98.assets/Bean的实例化过程.png)
+
+> 设置对象属性
+
+BeanWrapper接口可对bean实例操作，免去直接使用Java反射API。
+
+> 检查Aware接口
+
+当<u>对象实例化完成并且相关属性以及依赖设置完成之后</u>，Spring容器会检查当前对象实例是否实现了一系列的以Aware命名结尾的接口定义。如果是，则将这些**Aware接口定义中规定**的依赖注入给 Spring 的 IoC 容器当前对象实例。
+
+每个Aware接口定义不一样，实现的作用也不同。比如：
+
+- for BeanFactory
+
+org.springframework.beans.factory.BeanNameAware：设置当前Bean的BeanName，注入容器中；
+
+org.springframework.beans.factory.BeanClassLoaderAware：设置当前Bean的ClassLoader，注入容器中；
+
+org.springframework.beans.factory.BeanFactoryAware：设置当前Bean的BeanFactory容器引用，注入容器中。（这样，当前对象实例就拥有了一个BeanFactory容器的引用，并且可以对这个容器内允许访问的对象按照需要进行访问。）
+
+- for ApplicationContext
+
+org.springframework.context.ResourceLoaderAware
+
+org.springframework.context.ApplicationEventPublisherAware
+
+org.springframework.context.MessageSourceAware
+
+org.springframework.context.ApplicationContextAware
+
+> BeanPostProcessor
+
+- BeanPostProcessor & BeanFactoryPostProcessor
+
+BeanPostProcessor：存在于对象实例化阶段，处理容器内所有符合条件的实例化后的对象实例。
+
+BeanFactoryPostProcessor：存在于容器启动阶段，处理容器内所有符合条件的BeanDefinition。
+
+- 作用
+
+```java
+public interface BeanPostProcessor {
+  Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException;
+  Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException;
+}
+```
+
+上述接口定义的两个方法，都传入实例化的对象bean和beanName，这时在bean实例化过程中我们可以很便利对传入的对象实例进行一些扩展操作。
+
+**==常用场景：==**Spring的AOP则利用BeanPostProcessor来为对象生成相应的代理对象
+
+上述ApplicationContext对应对应的那些Aware接口实际上就是通过BeanPostProcessor的方式进行处理的。当ApplicationContext中每个对象的实例化过程走到BeanPostProcessor前置处理这一步时，ApplicationContext容器会检测到之前注册到容器的`ApplicationContextAwareProcessor`这个BeanPostProcessor的实现类，然后就会调用其`postProcessBeforeInitialization()`方法，检查并设置Aware相关依赖。
+
+```java
+class ApplicationContextAwareProcessor implements BeanPostProcessor {
+
+  private final ConfigurableApplicationContext applicationContext;
+
+  private final StringValueResolver embeddedValueResolver;
 
 
+  /**
+	 * Create a new ApplicationContextAwareProcessor for the given context.
+	 */
+  public ApplicationContextAwareProcessor(ConfigurableApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
+    this.embeddedValueResolver = new EmbeddedValueResolver(applicationContext.getBeanFactory());
+  }
 
 
+  @Override
+  @Nullable
+  public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+    if (!(bean instanceof EnvironmentAware || bean instanceof EmbeddedValueResolverAware ||
+          bean instanceof ResourceLoaderAware || bean instanceof ApplicationEventPublisherAware ||
+          bean instanceof MessageSourceAware || bean instanceof ApplicationContextAware)){
+      return bean;
+    }
 
+    AccessControlContext acc = null;
 
+    if (System.getSecurityManager() != null) {
+      acc = this.applicationContext.getBeanFactory().getAccessControlContext();
+    }
 
+    if (acc != null) {
+      AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+        invokeAwareInterfaces(bean);
+        return null;
+      }, acc);
+    }
+    else {
+      invokeAwareInterfaces(bean);
+    }
 
+    return bean;
+  }
 
+  private void invokeAwareInterfaces(Object bean) {
+    if (bean instanceof EnvironmentAware) {
+      ((EnvironmentAware) bean).setEnvironment(this.applicationContext.getEnvironment());
+    }
+    if (bean instanceof EmbeddedValueResolverAware) {
+      ((EmbeddedValueResolverAware) bean).setEmbeddedValueResolver(this.embeddedValueResolver);
+    }
+    if (bean instanceof ResourceLoaderAware) {
+      ((ResourceLoaderAware) bean).setResourceLoader(this.applicationContext);
+    }
+    if (bean instanceof ApplicationEventPublisherAware) {
+      ((ApplicationEventPublisherAware) bean).setApplicationEventPublisher(this.applicationContext);
+    }
+    if (bean instanceof MessageSourceAware) {
+      ((MessageSourceAware) bean).setMessageSource(this.applicationContext);
+    }
+    if (bean instanceof ApplicationContextAware) {
+      ((ApplicationContextAware) bean).setApplicationContext(this.applicationContext);
+    }
+  }
 
+}
+```
 
+- 自定义BeanPostProcessor
 
+场景：从服务器A中获取加密连接密码，然后解密并使用密码登录服务器B。利用BeanPostProcessor特性，进行解密操作。
 
+1. 自定义BeanPostProcessor，`com.wenqi.springioc.instance.PasswordDecodePostProcessor`
+2. 将其注册到容器中(`@Component`或`<bean>`)
 
+> InitializingBean和init-method
 
+当检查完BeanPostProcessor的前置处理之后，接下来检测当前对象是否实现了`InitializingBean`接口，如果是，则会调用其`afterPropertiesSet()`方法进一步调整对象实例的状态。类似地，在XML配置的时候，使用`<bean>`的`init-method`属性可以达到相同效果。
 
+> DisposableBean与destroy-method
 
+当容器完成上述流程之后，容器将检查singleton类型的bean实例，看是否实现了接口`org.springframework.beans.factory.DisposableBean`或其对应的bean定义是否通过`<bean>`的`destroy-method`属性指定了自定义的对象销毁方法。
 
+如果有，则就会为该实例注册一个用于对象销毁的回调（Callback），以便在这些singleton类型的对象实例销毁之前，执行回调方法中的销毁逻辑。
 
+==常用场景：==数据库连接池的销毁
 
+- demo
 
+com.wenqi.springioc.instance.destory.ApplicationLauncher
+
+注： 销毁的都是singleton的bean，prototype的bean生命周期已经交给使用对象管理了
+
+1. BeanFactory销毁调用`container.destroySingletons()`
+2. ApplicationContext销毁调用`container.registerShutdownHook()`
 
 
 

@@ -31,4 +31,12 @@ public class FXNewsProvider {
     public void getAndPersistNews() {
         System.out.println("FXNewsProvider: getAndPersistNews method call ...");
     }
+
+    public IFXNewsListener getNewsListener() {
+        return newsListener;
+    }
+
+    public IFXNewsPersister getNewPersistener() {
+        return newPersistener;
+    }
 }

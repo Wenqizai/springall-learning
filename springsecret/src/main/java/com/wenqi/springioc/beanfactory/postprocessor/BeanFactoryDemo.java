@@ -1,4 +1,4 @@
-package com.wenqi.springioc.postprocessor;
+package com.wenqi.springioc.beanfactory.postprocessor;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
@@ -14,10 +14,10 @@ public class BeanFactoryDemo {
         // 此demo中可以看出ApplicationContext比BeanFactory智能多, 自动识别配置文件中的BeanFactoryPostProcess
 
         // 声明将被后处理的BeanFactory实例
-        ConfigurableListableBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("classpath:postprocessor/spring-context.xml"));
+        ConfigurableListableBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("classpath:beanfactory/postprocessor/spring-context.xml"));
         // 声明要使用的BeanFactoryPostProcessor
         PropertyPlaceholderConfigurer propertyPostProcessor = new PropertyPlaceholderConfigurer();
-        propertyPostProcessor.setLocation(new ClassPathResource("postprocessor/conf/jdbc.properties"));
+        propertyPostProcessor.setLocation(new ClassPathResource("beanfactory/postprocessor/conf/jdbc.properties"));
         // 执行后处理操作
         propertyPostProcessor.postProcessBeanFactory(beanFactory);
     }

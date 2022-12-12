@@ -13,8 +13,8 @@
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
         <property name="locations">
             <list>
-                <value>postprocessor/conf/jdbc.properties</value>
-                <value>postprocessor/conf/mail.properties</value>
+                <value>perties</value>
+                <value>perties</value>
             </list>
         </property>
     </bean>
@@ -56,7 +56,7 @@
     </bean>
 
 
-    <bean id="dateFoo" class="com.wenqi.springioc.postprocessor.DateFoo">
+    <bean id="dateFoo" class="com.wenqi.springioc.beanfactory.postprocessor.DateFoo">
         <property name="date">
             <value>2022/12/08</value>
         </property>
@@ -71,7 +71,7 @@
             </map>
         </property>
     </bean>
-    <bean id="datePropertyEditor" class="com.wenqi.springioc.postprocessor.DatePropertyEditor">
+    <bean id="datePropertyEditor" class="com.wenqi.springioc.beanfactory.postprocessor.DatePropertyEditor">
         <property name="datePattern">
             <value>yyyy/MM/dd</value>
         </property>
@@ -86,7 +86,7 @@
         </property>
     </bean>
 
-    <bean id="datePropertyEditorRegistrar" class="com.wenqi.springioc.postprocessor.DatePropertyEditorRegistrar">
+    <bean id="datePropertyEditorRegistrar" class="com.wenqi.springioc.beanfactory.postprocessor.DatePropertyEditorRegistrar">
         <property name="propertyEditor">
             <ref bean="datePropertyEditor"/>
         </property>

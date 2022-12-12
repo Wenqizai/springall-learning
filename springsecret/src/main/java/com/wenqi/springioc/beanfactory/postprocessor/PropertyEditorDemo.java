@@ -1,4 +1,4 @@
-package com.wenqi.springioc.postprocessor;
+package com.wenqi.springioc.beanfactory.postprocessor;
 
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.context.ApplicationContext;
@@ -15,14 +15,14 @@ public class PropertyEditorDemo {
     }
 
     private static void demo02() {
-        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:postprocessor/spring-context.xml");
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:beanfactory/postprocessor/spring-context.xml");
         DateFoo dateFoo = (DateFoo) applicationContext.getBean("dateFoo");
         System.out.println(dateFoo.getDate());
     }
 
 
     private static void demo01() {
-        XmlBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("/postprocessor/spring-context.xml"));
+        XmlBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("/beanfactory/postprocessor/spring-context.xml"));
         DateFoo dateFoo = (DateFoo) beanFactory.getBean("dateFoo");
         System.out.println(dateFoo.getDate());
     }

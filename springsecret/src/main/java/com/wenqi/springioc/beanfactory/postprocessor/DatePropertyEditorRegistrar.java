@@ -1,4 +1,4 @@
-package com.wenqi.springioc.postprocessor;
+package com.wenqi.springioc.beanfactory.postprocessor;
 
 import org.springframework.beans.PropertyEditorRegistrar;
 import org.springframework.beans.PropertyEditorRegistry;
