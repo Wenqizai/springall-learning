@@ -1,10 +1,8 @@
 #  IOC
 
-## 概念
+## IOC
 
-### IOC
-
-#### 注入方式
+### 注入方式
 
 - **构造方法注入**
 
@@ -60,7 +58,7 @@ public void setNewPersistener(IFXNewsPersister newPersistener) {
 
 综上所述，构造方法注入和setter方法注入因为其侵入性较弱，且易于理解和使用，所以是现在使用最多的注入方式；而接口注入因为侵入性较强，近年来已经不流行了。
 
-#### 依赖管理
+### 依赖管理
 
 Ioc Service Provider不是人类，也就不能像酒吧服务生那样通过大脑来记忆和存储所有的相关信息。所以，它需要寻求其他方式来**记录**诸多对象之间的对应关系（依赖关系）。
 
@@ -134,7 +132,7 @@ FXNewsProvider newsProvider = injector.getInstance(FXNewsProvider.class);
 newsProvider.getAndPersistNews();
 ```
 
-### Spring IOC
+## Spring IOC
 
 Spring 的 IOC 容器是一个提供 IOC 支持的轻量级容器，除了基本的 IOC 支持之外, Spring IOC 还提供了 AOP 框架支持、企业级服务集成等服务。
 
@@ -162,7 +160,7 @@ Spring IOC 提供两种容器类型：`BeanFactory`和`ApplicationContext`。
 
 可以看到  `ApplicationContext` 继承于 `BeanFactory`，并且比 `BeanFactory` 多继承了一些接口，所以 `ApplicationContext` 功能丰富于 `BeanFactory`。
 
-#### BeanFactory
+### BeanFactory
 
 - 未拥有BeanFactory之前，获取Bean方式
 
@@ -227,7 +225,7 @@ FXNewsProvider newsProvider = (FXNewsProvider)container.getBean("djNewsProvider"
 newsProvider.getAndPersistNews();
 ```
 
-##### 注册与绑定方式
+#### 注册与绑定方式
 
 
 
@@ -245,11 +243,11 @@ newsProvider.getAndPersistNews();
 
 每一个受管的对象（Bean），在容器中都会有一个BeanDefinition的实例（instance）与之相对应，<u>该BeanDefinition的实例负责保存对象的所有必要信息，包括其对应的对象的class类型、是否是抽象类、构造方法参数以及其他属性等</u>。当客户端向BeanFactory请求相应对象的时候，BeanFactory通过这些信息为客户端返回一个完备可用的对象实例。
 
-###### 1 直接编码方式
+##### 1 直接编码方式
 
 `com.wenqi.springioc.beanfactory.HardCodeRegisterAndBind`
 
-###### 2 外部配置文件方式
+##### 2 外部配置文件方式
 
 Spring IOC支持两种配置文件格式：Properties和XML文件格式 (当然可以自定义文件格式，前提是需要)。
 
@@ -269,13 +267,13 @@ XML配置格式是Spring支持最完整，功能最强大的表达方式。当�
 
 test：`com.wenqi.springioc.beanfactory.XMLRegisterAndBind`
 
-###### 3. 注解方式
+##### 3. 注解方式
 
 编写配置类或配置的xml文件，扫描注解，注册/加载Bean。
 
 test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
 
-#### XML
+### XML
 
 > 声明方式
 
@@ -317,7 +315,7 @@ test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
 
 
 
-##### beans
+#### beans
 
 `<beans>` 是XML配置文件中最顶层的元素，它下面可以包含0或者1个 `<description>` 和多个 `<bean>` 以及 `<import>` 或者 `<alias>`。
 
@@ -360,7 +358,7 @@ test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
 <alias name="djNewsListener" alias="dowJonesNewsListener"/>
 ```
 
-##### bean
+#### bean
 
 ```xml
 <bean id="djNewsListener" 
@@ -369,7 +367,7 @@ test：`com.wenqi.springioc.beanfactory.AnnotationRegisterAndBind`
 </bean>
 ```
 
-###### bean的属性
+##### bean的属性
 
 - **id**
 
@@ -384,7 +382,7 @@ beanName明确依赖关系的场合等。
 
 每个注册到容器的对象都需要通过`<bean>`元素的class属性指定其类型，否则，容器可不知道这个对象到底是何方神圣。在大部分情况下，<u>该属性是必须的</u>。仅在少数情况下不需要指定，如后面将提到的在使用抽象配置模板的情况下
 
-###### 相互依赖的bean
+##### 相互依赖的bean
 
 更多时候，Bean之间是相互依赖，共同协作构建的。下面看一下Spring的IoC容器的XML配置中，应该如何表达这种依赖性。
 
@@ -903,11 +901,11 @@ beanFactory.registerScope("thread", threadScope);
 </bean>
 ```
 
-##### 工厂方法
+#### 工厂方法
 
 很多时候我们需要依赖第三方库，并且需要实例化相关类。此时我们可以通过工厂方法（Factory Method）模式，提供一个工厂类来是实例具体的接口实现类。这时当实现类有变更的话，只需要修改工厂方法类，而使用对象不需要改动，做到接口鱼实现类解耦。
 
-###### 静态工厂
+##### 静态工厂
 
 `com.wenqi.springioc.instance.xml.factory.StaticBarInterfaceFactory`
 
@@ -917,7 +915,7 @@ beanFactory.registerScope("thread", threadScope);
 
 class指定静态方法工厂类，factory-method指定工厂方法名称，然后，容器调用该静态方法工厂类的指定工厂方法（getInstance），并返回方法调用后的结果，即BarInterfaceImpl的实例。
 
-###### 非静态工厂
+##### 非静态工厂
 
 `com.wenqi.springioc.instance.xml.factory.NoStaticBarInterfaceFactory`
 
@@ -934,7 +932,7 @@ NonStaticBarInterfaceFactory是作为正常的bean注册到容器的，而barNoS
 
 如果barFactory带参数，处理方法与静态工厂处理方法一致。
 
-###### FactoryBean
+##### FactoryBean
 
 FactoryBean是Spring容器提供的一种可以扩展容器对象实例化逻辑的接口，请不要将其与容器名称BeanFactory相混淆。FactoryBean，其主语是Bean，定语为Factory，也就是说，它本身与其他注册到容器的对象一样，只是一个Bean而已，只不过，这种类型的Bean本身就是生产对象的工厂（Factory）。
 
@@ -968,7 +966,7 @@ ProxyFactoryBean
 TransactionProxyFactoryBean
 ```
 
-##### 方法注入/替换
+#### 方法注入/替换
 
 方法注入（Method Injection）以及方法替换（Method Replacement）
 
@@ -1232,6 +1230,57 @@ com.wenqi.springioc.instance.destory.ApplicationLauncher
 
 1. BeanFactory销毁调用`container.destroySingletons()`
 2. ApplicationContext销毁调用`container.registerShutdownHook()`
+
+### ApplicationContext
+
+<img src="Spring%E6%8F%AD%E7%A7%98.assets/ApplicationContext类图.png" alt="ApplicationContext类图"  />
+
+
+
+ApplicationContext的常用实现：
+
+1. `org.springframework.context.support.FileSystemXmlApplicationContext：`在默认情况下，从文件系统加载Bean定义以及相关资源的ApplicationContext实现。
+2. `org.springframework.context.support.ClassPathXmlApplicationContext：`在默认情况下，从ClassPath加载Bean定义以及相关资源的ApplicationContext实现。
+3. `org.springframework.web.context.support.XmlWebApplicationContext:`Spring提供的用于Web应用程序的AplicationContext实现。
+
+#### 统一资源加载
+
+资源定义比较广泛且抽象，能够以任何的形式（如：二进制对象形式、字节流形式、文件形式等），存在于任何的地方（如：文件系统、Classpath路径下、指定URL定位地方）。当我们进行资源查找和资源定位时，就会衍生出各种五花八门的实现类。此时，急需一种抽象和实现类来统一上述资源的多样化，对外提供统一的抽象接口并对使用者时透明的。
+
+为此，Spring提供了基于`org.springframework.core.io.Resource`和`org.springframework.core.io.ResourceLoader`接口的资源抽象和加载策略
+
+##### Resource
+
+org.springframework.core.io.Resource：作为所有资源的抽象和访问接口，常用的实现类如：
+
+1. `org.springframework.core.io.ByteArrayResource`：将字节数组（byte）提供的数据作为一种资源进行封装。如果通过InputStream形式访问该类型的资源，该实现会根据字节数组的数据，构造相应的ByteArrayInputStream并返回；
+
+```java
+@Override
+public InputStream getInputStream() throws IOException {
+    return new ByteArrayInputStream(this.byteArray);
+}
+```
+
+2. `org.springframework.core.io.ClassPathResource`：从Java应用程序的ClassPath中加载具体资源并进行封装，同时也可以指定的类加载器（ClassLoader）或者指定的类进行资源加载；
+3. `org.springframework.core.io.UrlResource`：通过java.net.URL进行的具体资源查找定位的实现类，内部委派URL进行具体的资源操作。
+4. `org.springframework.core.io.InputStreamResource`：将给定的InputStream视为一种资源的Resource实现类，较为少用。可能的情况下，以ByteArrayResource以及其他形式资源实现代之。
+
+- 自定义Resource
+
+可以考虑实现`org.springframework.core.io.Resource`，更为方便地是继承于抽象类`org.springframework.core.io.AbstractResource`。
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
