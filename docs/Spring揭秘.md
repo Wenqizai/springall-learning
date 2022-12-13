@@ -1270,15 +1270,19 @@ public InputStream getInputStream() throws IOException {
 
 可以考虑实现`org.springframework.core.io.Resource`，更为方便地是继承于抽象类`org.springframework.core.io.AbstractResource`。
 
+##### ResourceLoader
 
+org.springframework.core.io.ResourceLoader：是资源查找定位策略的统一抽象，具体的资源查找定位策略则由相应的ResourceLoader实现类给出。常用的ResourceLoader如下：
 
+> DefaultResourceLoader
 
+`org.springframework.core.io.DefaultResourceLoader`，其资源查找处理逻辑：
 
+1. 检查资源路径是否以classpath:前缀打头，如果是，则尝试构造ClassPathResource类型资源并返回；
 
-
-
-
-
+2. 检查其他方式定位资源：
+   1. 尝试通过URL，根据资源路径来定位资源，有则构造`FileUrlResource/UrlResource`返回，没有则抛出`MalformedURLException`，进入降级流程；
+   2. 降级流程：构造`ClassPathContextResource extends ClassPathResource`类型的资源返回。
 
 
 
