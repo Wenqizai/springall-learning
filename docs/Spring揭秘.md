@@ -1276,13 +1276,40 @@ org.springframework.core.io.ResourceLoader：是资源查找定位策略的统�
 
 > DefaultResourceLoader
 
-`org.springframework.core.io.DefaultResourceLoader`，其资源查找处理逻辑：
+`org.springframework.core.io.DefaultResourceLoader#getResource`，其资源查找处理逻辑：
 
-1. 检查资源路径是否以classpath:前缀打头，如果是，则尝试构造ClassPathResource类型资源并返回；
+1. 检查资源路径是否以classpath:前缀打头，如果是，则尝试构造`ClassPathResource`类型资源并返回；
 
 2. 检查其他方式定位资源：
-   1. 尝试通过URL，根据资源路径来定位资源，有则构造`FileUrlResource/UrlResource`返回，没有则抛出`MalformedURLException`，进入降级流程；
-   2. 降级流程：构造`ClassPathContextResource extends ClassPathResource`类型的资源返回。
+   1. 尝试通过URL，根据指定有协议前缀的资源路径来定位资源，有则构造`FileUrlResource/UrlResource`返回，没有则抛出`MalformedURLException`，进入降级流程；
+   2. 降级流程（`getResourceByPath`）：构造`ClassPathContextResource extends ClassPathResource`类型的资源返回。
+
+示例：com.wenqi.springioc.applicationcontext.resource.DefaultResourceLoaderDemo
+
+> FileSystemResourceLoader
+
+FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定位资源的降级流程（`getResourceByPath`）。如果我们希望从文件系统加载资源并以FileSystemResource类型返回，此时需要使用的`FileSystemResourceLoader`代替默认的`DefaultResourceLoader`。
+
+注：不同的ResourceLoader，加载出来的Resource也有所差别，具体可参考：
+
+- org.springframework.core.io.ClassPathResource
+- org.springframework.core.io.FileSystemResource
+
+示例：com.wenqi.springioc.applicationcontext.resource.FileSystemResourceLoaderDemo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
