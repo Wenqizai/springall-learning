@@ -1297,9 +1297,9 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 
 示例：com.wenqi.springioc.applicationcontext.resource.FileSystemResourceLoaderDemo
 
+##### ResourcePatternResolver
 
-
-
+`ResourcePatternResolver extends ResourceLoader`是ResourceLoader的扩展，ResourceLoader每次只能根据资源路径返回确定的单个Resource实例，而ResourcePatternResolver则可以根据指定的资源路径匹配模式，每次返回多个Resource实例。
 
 
 
