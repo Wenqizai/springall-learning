@@ -1249,6 +1249,10 @@ ApplicationContext的常用实现：
 
 为此，Spring提供了基于`org.springframework.core.io.Resource`和`org.springframework.core.io.ResourceLoader`接口的资源抽象和加载策略
 
+
+
+![image-20221227134107622](Spring揭秘.assets/Spring统一资源加载类.png)
+
 ##### Resource
 
 org.springframework.core.io.Resource：作为所有资源的抽象和访问接口，常用的实现类如：
@@ -1301,13 +1305,13 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 
 `ResourcePatternResolver extends ResourceLoader`是ResourceLoader的扩展，ResourceLoader每次只能根据资源路径返回确定的单个Resource实例，而ResourcePatternResolver则可以根据指定的资源路径匹配模式，每次返回多个Resource实例。
 
+常用实现类：`org.springframework.core.io.support.PathMatchingResourcePatternResolver`
 
+> PathMatchingResourcePatternResolver
 
+该实现类支持ResourceLoader级别的资源加载，支持基于Ant风格的路径匹配模式（类似于`**/*.suffix`之类的路径形式），支持ResourcePatternResolver新增加的`classpath*:`前缀等。
 
-
-
-
-
+构造`PathMatchingResourcePatternResolver`时，可以指定`DefaultResourceLoader`/`FileSystemResourceLoader`，不指定默认`DefaultResourceLoader`。`PathMatchingResourcePatternResolver`内部会将匹配后确定的资源路径，委派给它的`ResourceLoader`来查找和定位资源。
 
 
 
