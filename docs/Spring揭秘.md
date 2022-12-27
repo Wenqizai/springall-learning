@@ -1313,6 +1313,50 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 
 构造`PathMatchingResourcePatternResolver`时，可以指定`DefaultResourceLoader`/`FileSystemResourceLoader`，不指定默认`DefaultResourceLoader`。`PathMatchingResourcePatternResolver`内部会将匹配后确定的资源路径，委派给它的`ResourceLoader`来查找和定位资源。
 
+##### 关联ApplicationContext
+
+由ApplicationContext的类图可以得知，`ApplicationContext extends ResourcePatternResolver`，所以ApplicationContext可以当作一个ResourceLoader来使用。ApplicationContext的实现类AbstractApplicationContext也获取以上的行为。
+
+![image-20221227135704985](Spring揭秘.assets/AbstractApplicationContext作为Resource使用关系.png)
+
+- AbstractApplicationContext extends DefaultResourceLoader
+  - 方法`Resource getResource(String location)`  -> 实现类 `DefaultResourceLoader`。
+
+- AbstractApplicationContext 间接地实现接口 ResourcePatternResolver
+  - 方法`Resource[] getResources(String locationPattern)` -> 实现类`PathMatchingResourcePatternResolver`
+
+> 注入ResourceLoader
+
+如果某个bean需要依赖于ResourceLoader来查找定位资源，我们可以为其注入容器中声明的某个具体的ResourceLoader实现，该bean也无需实现任何接口，直接通过构造方法注入或者setter方法注入规则声明依赖即可，这样处理是比较合理的。
+
+注入方式：
+
+1. ResourceLoader作为Bean的属性，使用setter方法注入ResourceLoader(`com.wenqi.springioc.applicationcontext.resource.beaninject.FooBar`)
+
+2. Bean实现`ResourceLoaderAware`/`ApplicationContextAware`接口(`com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi`)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

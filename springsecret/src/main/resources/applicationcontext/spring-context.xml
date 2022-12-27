@@ -10,5 +10,12 @@
         http://www.springframework.org/schema/tx 
         http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
 
+    <bean id="resourceLoader" class="org.springframework.core.io.DefaultResourceLoader"/>
+    <bean id="fooBar" class="com.wenqi.springioc.applicationcontext.resource.beaninject.FooBar">
+        <property name="resourceLoader" ref="resourceLoader"/>
+    </bean>
+
+    <bean id="fooBarApi" class="com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi"/>
+    <bean id="fooBarApi2" class="com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi2"/>
 
 </beans>
