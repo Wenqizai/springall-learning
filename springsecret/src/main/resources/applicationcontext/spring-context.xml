@@ -18,4 +18,9 @@
     <bean id="fooBarApi" class="com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi"/>
     <bean id="fooBarApi2" class="com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi2"/>
 
+    <!-- 在配置文件中以String形式指定template所在位置, ApplicatonContext就可以正确地转换类型并注入依赖 -->
+    <bean id="mailer" class="com.wenqi.springioc.applicationcontext.resource.beaninject.XMailer">
+        <property name="template" value=""/>
+     </bean>
+
 </beans>

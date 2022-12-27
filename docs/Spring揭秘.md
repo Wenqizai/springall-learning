@@ -1332,12 +1332,15 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 注入方式：
 
 1. ResourceLoader作为Bean的属性，使用setter方法注入ResourceLoader(`com.wenqi.springioc.applicationcontext.resource.beaninject.FooBar`)
-
 2. Bean实现`ResourceLoaderAware`/`ApplicationContextAware`接口(`com.wenqi.springioc.applicationcontext.resource.beaninject.FooBarApi`)
 
-   
+> 注入Resource
 
+默认情况下，BeanFactory容器不会为org.springframework.core.io.Resource类型提供相应的PropertyEditor，所以，如果我们想注入Resource类型的bean定义，就需要注册自定义的PropertyEditor到BeanFactory容器。不过，对于ApplicationContext来说，我们无需这么做，因为ApplicationContext容器可以正确识别Resource类型并转换后注入相关对象。
 
+- ApplicationContext如何识别？
+
+ApplicationContext启动伊始，会通过一个org.springframework.beans.support.ResourceEditorRegistrar来注册Spring提供的针对Resource类型（`org.springframework.core.io.ResourceEditor`）的PropertyEditor实现到容器中。
 
 
 
