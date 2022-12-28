@@ -1342,7 +1342,7 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 
 ApplicationContext启动伊始，会通过一个org.springframework.beans.support.ResourceEditorRegistrar来注册Spring提供的针对Resource类型（`org.springframework.core.io.ResourceEditor`）的PropertyEditor实现到容器中。
 
-
+### I18n
 
 
 
