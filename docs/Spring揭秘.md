@@ -1344,13 +1344,29 @@ ApplicationContext启动伊始，会通过一个org.springframework.beans.suppor
 
 ### I18n
 
+### 容器事件发布
 
+#### 自定义事件发布
 
+Java SE提供了实现自定义事件发布（Custom Event publication）功能的基础类：java.util.EventObject类和java.util.EventListener接口。所有的自定义事件类型可以通过扩展EventObject来实现，而事件的监听器则扩展自EventListener。
 
+1. **自定义事件：EventObject**
 
+对方法执行情况进行发布和监听：当该类型的事件发布之后，相应的监听器即可对该类型的事件进行处理。
 
+com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEvent
 
+2. **自定义事件监听器：EventListener**
 
+自定义事件监听器，提供针对不同的事件发布时机相应的处理方法定义。
+
+com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventListener
+
+3. **组合事件类和监听器，发布事件：Publisher**
+
+com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventPublisher
+
+### Spring事件发布
 
 
 
