@@ -1366,13 +1366,32 @@ com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventL
 
 com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventPublisher
 
-### Spring事件发布
+#### Spring事件发布
 
+> ApplicationEvent
 
+Spring容器内自定义事件类型，继承自java.util.EventObject，它是一个抽象类，常用实现：
 
+- ContextClosedEvent：ApplicationContext容器在即将关闭的时候发布的时间类型；
+- ContextRefreshedEvent：ApplicationContext容器在初始化或者刷新的时候发布的事件类型；
+- RequestHandledEvent：Web请求处理后发布的事件，其有一子类ServletRequestHandledEvent提供特定于Java EE的Servlet相关事件。
 
+> ApplicationListener
 
+ApplicationContext容器内使用的自定义事件监听器接口定义，继承自java.util.EventListener。ApplicationContext容器在启动时，会自动识别并加载EventListener类型bean定义，一旦容器内有事件发布，将通知这些注册到容器的EventListener。
 
+> ApplicationContext
+
+ApplicationContext接口定义继承了ApplicationEventPublisher接口，该接口提供了void publishEvent(ApplicationEvent event)方法定义。也就是说ApplicationContext就是一个事件发布者的角色。
+
+但是事件的发布和监听器的注册等操作并不是由ApplicationContext来完成，而是在AbstactApplicationContext中委托接口`org.springframework.context.event.ApplicationEventMulticaster`来完成上述操作。
+
+实现类：
+
+- org.springframework.context.event.AbstractApplicationEventMulticaster
+- org.springframework.context.event.SimpleApplicationEventMulticaster
+
+![image-20221229171253371](Spring揭秘.assets/Spring容器事件发布类关系图.png)
 
 
 
