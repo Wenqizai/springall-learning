@@ -1,4 +1,4 @@
-package com.wenqi.springioc.applicationcontext.eventpublish.custom;
+package com.wenqi.springioc.applicationcontext.eventpublish;
 
 /**
  * @author liangwenqi

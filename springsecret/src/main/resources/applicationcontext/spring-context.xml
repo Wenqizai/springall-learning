@@ -23,4 +23,7 @@
         <property name="template" value=""/>
      </bean>
 
+    <bean id="methodExecutionEventListener" class="com.wenqi.springioc.applicationcontext.eventpublish.spring.MethodExecutionEventListener"/>
+    <bean id="methodExecutionEventPublisher" class="com.wenqi.springioc.applicationcontext.eventpublish.spring.MethodExecutionEventPublisher"/>
+
 </beans>
