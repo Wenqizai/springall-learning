@@ -1342,11 +1342,11 @@ FileSystemResourceLoader extends DefaultResourceLoader，主要是重写了定�
 
 ApplicationContext启动伊始，会通过一个org.springframework.beans.support.ResourceEditorRegistrar来注册Spring提供的针对Resource类型（`org.springframework.core.io.ResourceEditor`）的PropertyEditor实现到容器中。
 
-### I18n
+#### I18n
 
-### 容器事件发布
+#### 容器事件发布
 
-#### 自定义事件发布
+##### 自定义事件发布
 
 Java SE提供了实现自定义事件发布（Custom Event publication）功能的基础类：java.util.EventObject类和java.util.EventListener接口。所有的自定义事件类型可以通过扩展EventObject来实现，而事件的监听器则扩展自EventListener。
 
@@ -1366,7 +1366,7 @@ com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventL
 
 com.wenqi.springioc.applicationcontext.eventpublish.custom.MethodExecutionEventPublisher
 
-#### Spring事件发布
+##### Spring事件发布
 
 > ApplicationEvent
 
@@ -1392,6 +1392,8 @@ ApplicationContext接口定义继承了ApplicationEventPublisher接口，该接�
 - org.springframework.context.event.SimpleApplicationEventMulticaster
 
 ![image-20221229171253371](Spring揭秘.assets/Spring容器事件发布类关系图.png)
+
+#### 多模块加载
 
 
 
