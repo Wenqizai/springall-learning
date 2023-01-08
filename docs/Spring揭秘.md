@@ -1395,6 +1395,12 @@ ApplicationContext接口定义继承了ApplicationEventPublisher接口，该接�
 
 #### 多模块加载
 
+### 扩展
+
+##### Autowire
+
+
+
 
 
 
