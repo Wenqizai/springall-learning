@@ -19,4 +19,7 @@ public class FXNewsProvider {
         this.newsListener = newsListener;
         this.newsPersister = newsPersister;
     }
+
+    public FXNewsProvider() {
+    }
 }

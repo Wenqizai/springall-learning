@@ -1399,7 +1399,46 @@ ApplicationContext接口定义继承了ApplicationEventPublisher接口，该接�
 
 ##### Autowire
 
+Spring IOC提供一个BeanPostProcessor自定义实现，用来检查当前对象是否有`@Autowire`标注的依赖需要注入。
 
+实现类：`org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor`
+
+注意需要将`AutowiredAnnotationBeanPostProcessor`加入容器中，@Autowire才生效。
+
+相关伪代码：
+
+```java
+Object[] beans = ...;
+
+for(Object bean:beans) {
+    if(autowiredExistsOnField(bean)){
+        Field f = getQulifiedField(bean));
+        setAccessiableIfNecessary(f);
+        f.set(getBeanByTypeFromContainer());
+    }
+    
+    if(autowiredExistsOnConstructor(bean)){
+    }
+    
+    if(autowiredExistsOnMethod(bean)){
+    }
+}
+```
+
+> @Resource
+
+@Resource与@Autowired不同，它遵循的是byName自动绑定形式的行为准则。
+
+实现类：`org.springframework.context.annotation.CommonAnnotationBeanPostProcessor`
+
+类似地，需要将`CommonAnnotationBeanPostProcessor`加入容器中，`@Resource`才生效。类似的注解还有： javax.annotation.PreDestroy、javax.annotation.PostConstruct。
+
+> 注解自动生效
+
+```xml
+<!-- 注解自动生效 -->
+<context:annotation-config/>
+```
 
 
 

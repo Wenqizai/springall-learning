@@ -16,4 +16,12 @@
     <bean id="djNewsListener" class="com.wenqi.springioc.instance.impl.DowJonesNewsListener"/>
     <bean id="djNewsPersister" class="com.wenqi.springioc.instance.impl.DowJonesNewsPersister"/>
 
+    <!-- 声明该bean, @Autowire才生效 -->
+    <bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor"/>
+    <!-- 声明该bean, @Resource才生效 -->
+    <bean class="org.springframework.context.annotation.CommonAnnotationBeanPostProcessor"/>
+
+    <!-- 注解自动生效 -->
+    <context:annotation-config/>
+
 </beans>
