@@ -1442,6 +1442,29 @@ for(Object bean:beans) {
 
 
 
+# AOP
+
+## AOP概述
+
+### Joinpoint
+
+joinpoint，执行点，常见的joinpoint类型：
+
+- **方法调用**（Method Call):当某个方法被调用时，所处的程序执行点；
+- **方法调用执行**（Method Call execution）：是方法内部执行开始时点，注意方法调用执行点晚于方法调用点；
+- **构造方法调用**（Constructor Call）：程序执行过程中对某个对象调用其构造方法进行初始化时的点；
+- **构造方法执行**（Constructor Call Execution）：指的是某个对象构造方法内部执行的开始时点；
+- **字段设置**(Field Set)：对象的某个属性通过setter方法被设置或者直接被设置的时点；
+- **字段获取**(Field Get)：对应的是某个对象相应属性被访问的时点；
+- **异常处理执行**(Exception Handler Execution)：程序执行过程中，在某些类型异常抛出后，对应的异常处理逻辑执行的时点；
+- **类初始化**(Class initialization)：指的是类中某些静态类型或者静态块的初始化时点。
+
+
+
+
+
+
+
 
 
 
