@@ -1459,11 +1459,32 @@ joinpoint，执行点，常见的joinpoint类型：
 - **异常处理执行**(Exception Handler Execution)：程序执行过程中，在某些类型异常抛出后，对应的异常处理逻辑执行的时点；
 - **类初始化**(Class initialization)：指的是类中某些静态类型或者静态块的初始化时点。
 
+### Pointcut
 
+pointcut可以理解为joinpoint的表述方式，通过pointcut的描述我们才可以知道往系统哪些joinpoint上织入横切逻辑。
 
+- Pointcut的表述方式
+  1. 直接指定Joinpoint所在方法名称；
+  2. 正则表达式；
+  3. 使用特别的Pointcut表述语言。
+- Pointcut运算
+  1. &&、||
 
+### Advice
 
+- Before Advice
 
+- After（finally） Advice
+
+- After Returning Advice
+
+- After Throwing Advice
+
+  
+
+<img src="Spring揭秘.assets/AOP-Advice执行时机.png" alt="image-20230113175043265" style="zoom: 80%;" />
+
+- Around Advice
 
 
 
