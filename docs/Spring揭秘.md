@@ -1488,7 +1488,7 @@ pointcut可以理解为joinpoint的表述方式，通过pointcut的描述我们�
 
 
 
-
+![image-20230116170211432](Spring揭秘.assets/AOP各场景.png)
 
 
 
