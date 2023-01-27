@@ -1500,11 +1500,43 @@ Spring AOP本质是采用动态代理机制和字节码生成技术实现，在�
 2. JDK动态代理，要求目标对象必须实现相应的接口
 3. CGLIB：目标对象无需实现相应接口
 
+### PointCut
 
+定义一些切入点匹配逻辑，关键实现：`getClassFilter`、`getMethodMatcher`。
 
+```java
+public interface Pointcut {
 
+    /**
+    * Return the ClassFilter for this pointcut.
+    * 类匹配
+    */
+    ClassFilter getClassFilter();
 
+    /**
+    * Return the MethodMatcher for this pointcut.
+    * 方法匹配
+    */
+    MethodMatcher getMethodMatcher();
 
+    // 默认返回true，所有方法和类均是pointcut
+    Pointcut TRUE = TruePointcut.INSTANCE;
+
+}
+```
+
+如果我们需要将相应的pointCut加入到Spring IOC容器中，需要我们定义Bean。
+
+```xml
+<bean id="nameMatchPointcut"class="org.springframework.aop.support.NameMatchMethodPointcut">
+    <property name="mappedNames">
+        <list>
+            <value>methodNamel</value>
+            <value>methodName2</value>
+        </list>
+    </property>
+</bean>
+```
 
 
 
