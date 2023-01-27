@@ -1538,7 +1538,44 @@ public interface Pointcut {
 </bean>
 ```
 
+> ClassFilter
 
+```java
+public interface ClassFilter {
+
+   boolean matches(Class<?> clazz);
+
+   ClassFilter TRUE = TrueClassFilter.INSTANCE;
+
+}
+```
+
+
+
+```java
+public interface MethodMatcher {
+    // isRuntime == false, 当前MethodMatcher是StaticMethodMatcher 
+    // 调用该方法, 不考虑具体Joinpoint的方法参数
+    boolean matches(Method method, class targetclass);
+    boolean isRuntime();
+    // isRuntime == ture 调用该方法，当前MethodMatcher是DynamicMethodMatcher
+    // 每次对Joinpoint的方法参数进行匹配检查
+    boolean matches(Method method, class targetclass, Object[] args);
+    MethodMatcher TRUE TrueMethodMatcher.INSTANCE;   
+}                                                       
+```
+
+### Advice
+
+> Before Advice
+
+Before Advice所实现的横切逻辑将在相应的Joinpointz之前执行。
+
+```java
+public interface MethodBeforeAdvice extends BeforeAdvice {
+   void before(Method method, Object[] args, @Nullable Object target) throws Throwable;
+}
+```
 
 
 
