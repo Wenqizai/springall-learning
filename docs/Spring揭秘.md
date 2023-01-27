@@ -1571,19 +1571,56 @@ public interface MethodMatcher {
 
 Before Advice所实现的横切逻辑将在相应的Joinpointz之前执行。
 
+demo: com.wenqi.springaop.advice.ResourceSetupBeforeAdvice
+
 ```java
 public interface MethodBeforeAdvice extends BeforeAdvice {
    void before(Method method, Object[] args, @Nullable Object target) throws Throwable;
 }
 ```
 
+> ThrowsAdvice
 
+自定义throw advice可以实现接口`org.springframework.aop.ThrowsAdvice`。因ThrowsAdvice没有定义相关的接口，我们的实现方法需要遵循一下方法规则：
 
+我们可以根据拦截的Throwable不同，定义相同的重载方法`afterThrowing()`，Spring将会使用反射机制来调用这些方法。
 
+demo: com.wenqi.springaop.advice.ExceptionBarrierThrowsAdvice
 
+```java
+// 前三个参数时可选的：Method, args, target
+void afterThrowing([Method, args, target], ThrowableSubclass);
+```
 
+> AfterReturningAdvice
 
+当方法正常返回时，AfterReturningAdvice才会执行。AfterReturningAdvice可以访问方法的返回值`returnValue`，**但不可以修改返回值**。
 
+demo: com.wenqi.springaop.advice.TaskExecutionAfterReturningAdvice
+
+```java
+public interface AfterReturningAdvice extends AfterAdvice {
+   void afterReturning(@Nullable Object returnValue, Method method, Object[] args, @Nullable Object target) throws Throwable;
+}
+```
+
+> Aroud Advice
+
+Spring AOP没有提供After(Finally)Advice，使得我们没有一个合适的Advice类型来承载类似于系统资源清除之类的横切逻辑。Spring AOP的AfterReturningAdvice不能更改Joinpoint/所在方法的返回值，使得我们在方法正常返回后无法对其进行更多干预。不过这些Around Advice都可以解决。
+
+Spring中没有直接电一对应的Around Advice实现接口，而是直接采用AOP Alliance提供的标准接口：`org.aopalliance.intercept.MethodInterceptor`。
+
+demo: 
+
+1. com.wenqi.springaop.advice.DiscountMethodInterceptor
+
+2. com.wenqi.springaop.advice.PerformanceMethodInterceptor
+
+```java
+public interface MethodInterceptor extends Interceptor {
+    Object invoke(MethodInvocation invocation) throws Throwable;
+}
+```
 
 
 
