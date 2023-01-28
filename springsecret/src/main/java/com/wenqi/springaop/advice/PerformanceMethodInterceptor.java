@@ -21,9 +21,7 @@ import org.springframework.util.StopWatch;
             return invocation.proceed();
         } finally {
             watch.stop();
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(watch.toString());
-            }
+            System.out.println("final -> " + watch.toString());
         }
     }
 }

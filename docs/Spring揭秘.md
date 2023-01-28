@@ -1634,6 +1634,54 @@ Introduction可以在不改动目标类定义的情况下，为目标类添加�
 
 在Spring中，为目标对象添加新的属性和行为必须声明相应的接口以及相应的实现。这样，再通过**特定的拦截器**将新的接口定义以及实现类中的逻辑附加到目标对象之上。之后，目标对象的代理对象就拥有了新的状态和行为。这个特定的拦截器就是`org.springframework.aop.IntroductionInterceptor`。
 
+### Aspect
+
+Advisor代表Spring中的Aspect，但是，与正常的Aspect不同，Advisor通常只持有一个Pointcut和个Advice。.而理论上，Aspect定义中可以有多个Pointcut和多个Advice,所以，我们可以认为Advisor是一种特殊的Aspect。
+
+![image-20230128112718734](Spring揭秘.assets/Advisor.png)
+
+
+
+![image-20230128112825620](Spring揭秘.assets/PointcutAdvisor实现.png)
+
+### 织入
+
+上述各个模块准备好了，剩下就是拼接各个模块，也就是织入。
+
+Spring AOP采用的织入器是（非唯一，基础实现）：`org.springframework.aop.framework.ProxyFactory`
+
+ProxyFactory使用伪代码：
+
+```java
+// 1. 创建织入器，传入目标对象
+ProxyFactory weaver = new ProxyFactory(targetObject);
+// 或者
+// ProxyFactory weaver = new ProxyFactory();
+// weaver.setTarget(targetObject)
+
+// 2. 准备原材料 advisor
+Advisor advisor = new ...;
+weaver.addAdvisor(advisor);
+
+// 3. 使用proxyObject
+Object proxyObject = weaver.getProxy();
+```
+
+- demo
+
+1. com.wenqi.springaop.weave.intf.ProxyFactoryInterfaceDemo
+2. com.wenqi.springaop.weave.clazz.ProxyFactoryClazzDemo
+
+- 关于ProxyFactory使用的代理方式的一点说明：
+
+1. 如果目标类没有实现任何接口，不管proxyTargetClass的值是什么，ProxyFactory会采用基于类的代理。
+2. 如果ProxyFactory的proxyTargetclass属性值被设置为true，ProxyFactory会采用基于类的代理。
+3. 如果ProxyFactoryl的optimize/属性值被设置为true，ProxyFactory会采用基于类的代理。
+
+> 关于Introduction的织入
+
+
+
 
 
 
