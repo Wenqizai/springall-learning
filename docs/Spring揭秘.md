@@ -1680,7 +1680,31 @@ Object proxyObject = weaver.getProxy();
 
 > 关于Introduction的织入
 
+demo: com.wenqi.springaop.weave.IntroductionProxyFactoryDemo
 
+#### proxyFactory原理
+
+创建proxy相关类：
+
+![image-20230128152745594](Spring揭秘.assets/AopProxy.png)
+
+
+
+> 创建代理对象
+
+使用jdk还是cglib，核心实现逻辑，默认实现为`org.springframework.aop.framework.DefaultAopProxyFactory`，
+
+可以看到spring aop是根据传入的配置类`AdvisedSupport`来创建不同的代理对象。
+
+```java
+public interface AopProxyFactory {
+   AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException;
+}
+```
+
+> AdvisedSupport
+
+![image-20230128153531195](Spring揭秘.assets/AdvisedSupport.png)
 
 
 
