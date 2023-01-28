@@ -1567,6 +1567,10 @@ public interface MethodMatcher {
 
 ### Advice
 
+#### per-class
+
+per-class类型的Advice可以在目标类所有对象实例之间共享。
+
 > Before Advice
 
 Before Advice所实现的横切逻辑将在相应的Joinpointz之前执行。
@@ -1622,9 +1626,13 @@ public interface MethodInterceptor extends Interceptor {
 }
 ```
 
+#### per-instance
 
+与per-class类型的Advice不同，per-instance类型的Advice不会在目标类所有对象实例之间共享，而是会为不同的实例对象保存它们各自的状态以及相关逻辑。Spring AOP中，Introduction是唯一的一种per-instance型Advice。
 
+Introduction可以在不改动目标类定义的情况下，为目标类添加新的属性以及行为。
 
+在Spring中，为目标对象添加新的属性和行为必须声明相应的接口以及相应的实现。这样，再通过**特定的拦截器**将新的接口定义以及实现类中的逻辑附加到目标对象之上。之后，目标对象的代理对象就拥有了新的状态和行为。这个特定的拦截器就是`org.springframework.aop.IntroductionInterceptor`。
 
 
 
