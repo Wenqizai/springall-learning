@@ -10,7 +10,7 @@ import org.springframework.util.StopWatch;
  * @author liangwenqi
  * @date 2023/1/27
  */
-    public class PerformanceMethodInterceptor implements MethodInterceptor {
+public class PerformanceMethodInterceptor implements MethodInterceptor {
     private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceMethodInterceptor.class);
 
     @Override

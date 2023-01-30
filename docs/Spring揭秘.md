@@ -1682,7 +1682,9 @@ Object proxyObject = weaver.getProxy();
 
 demo: com.wenqi.springaop.weave.IntroductionProxyFactoryDemo
 
-#### proxyFactory原理
+introduction本质是为已经代理的代理的对象添加一个拦截器，为代理对象同时拥有另一个类的行为。
+
+#### ProxyFactory原理
 
 创建proxy相关类：
 
@@ -1708,13 +1710,34 @@ public interface AopProxyFactory {
 
 
 
+> ProxyFactory
 
+![image-20230129103647014](Spring揭秘.assets/ProxyFactory关系图.png)
 
+可以看到ProxyFactory集AdvisedSupport和AopProxy于一身。我们可以通过使用ProxyFactory设置生成代理对象相关的信息（AdvisedSupport），也可以生成最终的代理对象（AopProxy）。
 
+#### ProxyFactory兄弟
 
+ProxyFactory作为Spring AOP的最基础的织入器，同样地Spring AOP也拥有功能得到增强地织入器。
 
+![image-20230129104517463](Spring揭秘.assets/ProxyFactory的兄弟.png)
 
+##### ProxyFactoryBean
 
+ProxyFactoryBean：将Spring AOP和Spring IOC相结合。我们可以当其作为AOP使用，又可以对容器中的PointCut，Advice进行管理。本质上ProxyFactoryBean就是一个用来生产Proxy的FactoryBean。
+
+```java
+public class ProxyFactoryBean extends ProxyCreatorSupport
+      implements FactoryBean<Object>, BeanClassLoaderAware, BeanFactoryAware {}
+```
+
+获取代理对象方法：`org.springframework.aop.framework.ProxyFactoryBean#getObject`
+
+demo: `com.wenqi.springaop.weave.proxyfactorybean.ProxyFactoryBeanDemo`
+
+> for introduction
+
+demo: `com.wenqi.springaop.weave.proxyfactorybean.introduction.IntroductionDemo`
 
 
 

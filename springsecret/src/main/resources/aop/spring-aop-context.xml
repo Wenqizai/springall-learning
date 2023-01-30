@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd 
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-2.5.xsd 
+        http://www.springframework.org/schema/tx 
+        http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+   <!-- ============== 注入织入器ProxyFactoryBean ============== -->
+    <bean id="proxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="target" ref="task"/> <!-- 1. 代理的目标对象 -->
+        <property name="interceptorNames"> <!-- 2. 使用通配符, 注入相关advice -->
+            <list>
+                <value>global*</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="global_debug" class="org.springframework.aop.interceptor.DebugInterceptor"/>
+    <bean id="global_performance" class="org.springframework.aop.interceptor.PerformanceMonitorInterceptor"/>
+
+
+
+    <!-- ============== 基于接口/类的代理方式, 使用ProxyFactoryBean  ============== -->
+    <bean id="pointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+        <property name="mappedName" value="execute"/> <!-- 定义pointcut -->
+    </bean>
+    <bean id="performanceMethodInterceptor" class="com.wenqi.springaop.advice.PerformanceMethodInterceptor"/>
+    <bean id="task" class="com.wenqi.springaop.weave.intf.MockTask"/>
+    <bean id="performanceAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+        <property name="pointcut" ref="pointcut"/>
+        <property name="advice" ref="performanceMethodInterceptor"/>
+    </bean>
+
+    <bean id="taskProxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="target" ref="task"/>
+        <property name="proxyInterfaces"> <!-- autodetectInterfaces 默认为true, 可以不指定接口 -->
+            <list>
+                <value>com.wenqi.springaop.weave.intf.ITask</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>performanceAdvisor</value>
+            </list>
+        </property>
+        <property name="proxyTargetClass" value="true"/> <!-- 基于类代理, 参考实现 org.springframework.aop.framework.ProxyFactoryBean.getSingletonInstance -->
+    </bean>
+
+
+    <!-- ============== 基于introduction代理方式, 使用ProxyFactoryBean  ============== -->
+    <bean id="introducedTask" class="org.springframework.aop.framework.ProxyFactoryBean" scope="prototype">
+        <property name="targetName" value="task"/>
+        <property name="proxyInterfaces">
+            <list>
+                <value>com.wenqi.springaop.weave.intf.ITask</value>
+                <value>com.wenqi.springaop.weave.proxyfactorybean.introduction.ICounter</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>introductionInterceptor</value>
+            </list>
+        </property>
+    </bean>
+    <bean id="introductionInterceptor" class="org.springframework.aop.support.DelegatingIntroductionInterceptor" scope="prototype">
+        <constructor-arg>
+            <bean class="com.wenqi.springaop.weave.proxyfactorybean.introduction.CounterImpl"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="introducedTask2" class="org.springframework.aop.framework.ProxyFactoryBean" scope="prototype">
+        <property name="targetName" value="task"/>
+        <property name="proxyInterfaces">
+            <list>
+                <value>com.wenqi.springaop.weave.intf.ITask</value>
+                <value>com.wenqi.springaop.weave.proxyfactorybean.introduction.ICounter</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>delegatePerTargetObjectIntroductionInterceptor</value>
+            </list>
+        </property>
+    </bean>
+    <bean id="delegatePerTargetObjectIntroductionInterceptor" class="org.springframework.aop.support.DelegatePerTargetObjectIntroductionInterceptor" scope="prototype">
+        <constructor-arg index="0" value="com.wenqi.springaop.weave.proxyfactorybean.introduction.CounterImpl"/>
+        <constructor-arg index="1" value="com.wenqi.springaop.weave.proxyfactorybean.introduction.ICounter"/>
+    </bean>
+</beans>
