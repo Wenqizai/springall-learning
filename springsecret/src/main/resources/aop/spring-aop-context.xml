@@ -91,4 +91,51 @@
         <constructor-arg index="0" value="com.wenqi.springaop.weave.proxyfactorybean.introduction.CounterImpl"/>
         <constructor-arg index="1" value="com.wenqi.springaop.weave.proxyfactorybean.introduction.ICounter"/>
     </bean>
+
+
+    <!-- ============== TargetSource  ============== -->
+    <bean id="target" class="com.wenqi.springaop.targetsource.TargetObject"/>
+    <bean id="targetPrototype" class="com.wenqi.springaop.targetsource.TargetObject" scope="prototype"/>
+
+    <bean id="singletonTargetSource" class="org.springframework.aop.target.SingletonTargetSource">
+        <constructor-arg ref="target"/>
+    </bean>
+    <bean id="targetProxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="targetSource" ref="singletonTargetSource"/> <!-- 感觉与直接使用target没什么两样 -->
+        <property name="interceptorNames">
+            <list>
+                <value>performanceMethodInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="prototypeTargetSource" class="org.springframework.aop.target.PrototypeTargetSource" scope="prototype"> <!-- 每次都返回新对象, scope需要设置为prototyep -->
+        <property name="targetBeanName" value="targetPrototype"/>
+    </bean>
+    <bean id="targetProxy2" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="targetSource" ref="prototypeTargetSource"/>
+        <property name="interceptorNames">
+            <list>
+                <value>performanceMethodInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="hotSwappableTargetSource" class="org.springframework.aop.target.HotSwappableTargetSource">
+        <constructor-arg ref="target"/>
+    </bean>
+    <bean id="targetProxy3" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="targetSource" ref="hotSwappableTargetSource"/>
+        <property name="interceptorNames">
+            <list>
+                <value>performanceMethodInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
+
+
+
+
+
 </beans>

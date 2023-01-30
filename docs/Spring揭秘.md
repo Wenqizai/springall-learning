@@ -1739,5 +1739,65 @@ demo: `com.wenqi.springaop.weave.proxyfactorybean.ProxyFactoryBeanDemo`
 
 demo: `com.wenqi.springaop.weave.proxyfactorybean.introduction.IntroductionDemo`
 
+#### AutoProxy
+
+ProxyFactoryBean关注每个代理对象带来配置繁琐的问题，AutoProxy自动配置代理来解决此问题。
+
+AutoProxy的原理是拦截容器中的每一个Bean，检查是否满足auto proxy，满足则自动创建proxy，否则手动指定创建。这时需要我们提供拦截bean的条件和信息了。
+
+### TargetSource
+
+TargetSource，用来链接目标对象，当我们获取目标对象时可以从TargetSource中获取，而不用直接调用这个目标对象。
+
+> SingletonTargetSource
+
+SingletonTargetSource：内部只持有一个目标对象，每次调用到目标对象方法时，SingletonTargetSource都会使用同一个目标对象。
+
+> PrototypeTargetSource
+
+PrototypeTargetSource: 与SingletonTargetSource正好相反，如果为ProxyFactory或者ProxyFactoryBean设置一个PrototypeTargetSource类型的TargetSource，每次方法调用到目标对象上的方法的时候，PrototypeTargetSource都会返回一个新的目标对象实例供调用。
+
+> HotSwappableTargetSource
+
+HotSwappableTargetSource：封装目标对象，可以让我们在应用程序运行的时候，根据某种特定条件，动态地替换目标对象类的具体实现，比如，IService有多个实现类，如果程序启动之后，默认的IService实现类出现了问题，我们可以马上切换到IServicel的另一个实现上，而所有这些对于调用者来说都是透明的。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
