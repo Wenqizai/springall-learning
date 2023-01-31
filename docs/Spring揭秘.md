@@ -1761,9 +1761,44 @@ PrototypeTargetSource: 与SingletonTargetSource正好相反，如果为ProxyFact
 
 HotSwappableTargetSource：封装目标对象，可以让我们在应用程序运行的时候，根据某种特定条件，动态地替换目标对象类的具体实现，比如，IService有多个实现类，如果程序启动之后，默认的IService实现类出现了问题，我们可以马上切换到IServicel的另一个实现上，而所有这些对于调用者来说都是透明的。
 
+### AspectJ
 
+@AspectJ代表定义Aspect的一种风格，可以以POJO的形式定义Aspect，没有其他接口定义限制。
 
+#### PointCut
 
+PointCut的两种声明方式
+
+- Pointcut Expression
+- Pointcut Signature
+
+demo: com.wenqi.springaop.aspectj.pointcut.PointCutExpressionDemo
+
+> 声明表达式
+
+1. execution
+
+必须指定类型：**返回类型、方法名、参数**
+
+通配符：`*`、`..`。（`..`可以用在declaring-type-pattern和declaring-type-pattern）
+
+```txt
+execution(modifiers-pattern ret-type-pattern declaring-type-pattern name-pattern(param-pattern) throws-pattern )
+```
+
+2. within
+
+within只接受类型声明，将会匹配指定类型下所有的jointpoint。
+
+3. this/target
+
+this指调用方法、target指目标方法。
+
+如：`@Point(this(Object2) && target(Object2))`表示当Object2调用Object3上方法的是否才会匹配。
+
+4. args
+
+args是方法级的jointpoint，会匹配方法参数是args指定类型的所有方法。
 
 
 
