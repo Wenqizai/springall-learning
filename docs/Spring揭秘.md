@@ -1800,7 +1800,28 @@ this指调用方法、target指目标方法。
 
 args是方法级的jointpoint，会匹配方法参数是args指定类型的所有方法。
 
+### 失效问题
 
+同一个对象内方法调用，AOP失效。
+
+demo：com.wenqi.springaop.problem.Demo
+
+- 问题
+
+第一个method2被拦截，第二个method2没有被拦截（method1方法内调用）
+
+```txt
+method2 executed
+PT in method[method2] >>>>>>>StopWatch '': running time = 9513201 ns; [] took 9513201 ns = 100%
+method2 executed
+method1 executed!
+PT in method[method1] >>>>>>>StopWatch '': running time = 85000 ns; [] took 85000 ns = 100%
+```
+
+- 解决方案
+
+1. `AopContext.currentProxy()`
+2. `weaver.setExposeProxy(true);`
 
 
 
