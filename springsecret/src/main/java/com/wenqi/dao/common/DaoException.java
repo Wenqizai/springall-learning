@@ -1,4 +1,4 @@
-package com.wenqi;
+package com.wenqi.dao.common;
 
 /**
  * @author liangwenqi

@@ -1,4 +1,4 @@
-package com.wenqi;
+package com.wenqi.dao.common;
 
 import com.alibaba.druid.pool.DruidDataSource;
 

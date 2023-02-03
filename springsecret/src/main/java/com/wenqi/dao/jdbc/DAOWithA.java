@@ -1,7 +1,7 @@
 package com.wenqi.dao.jdbc;
 
-import com.wenqi.DaoException;
-import com.wenqi.DataSourceUtil;
+import com.wenqi.dao.common.DaoException;
+import com.wenqi.dao.common.DataSourceUtil;
 
 import java.sql.Connection;
 import java.sql.ResultSet;

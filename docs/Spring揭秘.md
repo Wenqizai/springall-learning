@@ -1839,6 +1839,250 @@ JDBC标准主要面向较为底层的数据库操作，屏蔽了数据厂商提�
 
 demo：com.wenqi.dao.jdbc.DAOWithA
 
+```java
+public class SQLException extends java.lang.Exception implements Iterable<Throwable> {
+    // 对应SQLState的值    
+    private String SQLState;
+	// 对应errorCode
+    private int vendorCode;   
+}
+```
+
+## JdbcTemplate
+
+JdbcTemplate封装了JDBC API，统一使用风格和规范。以模板方法的设计模式，抽取样式代码，统一处理JDBC资源的获取和释放。调用方仅关注业务API的调用，从避免繁琐并易出错编码过程中抽离。
+
+与此同时，JdbcTemplate对`SQLException`进行统一的封装，将基于JDBC的异常纳入到Spring的异常体系中。
+
+> 关于JDBC的样式代码
+
+1. 获取数据库连接
+
+```java
+Connection con = DataSourceUtil.getDataSource().getConnection();
+```
+
+2. 根据connect创建对应的Statement或者PreparedStatement
+
+```java
+Statement stmt = con.createStatement();
+PreparedStatement ps = con.prepareStatement(sql);
+```
+
+3. 根据传入sql和参数，执行sql并解析结果
+
+```java
+ResultSet rs = stmt.executeQuery(sql);
+ while (rs1.next()) {
+     processResultRow(rs);
+ }
+```
+
+4. 关闭Statement或者PreparedStatement
+
+```java
+rs.close();
+stmt.close();
+stmt = null;
+```
+
+5. 异常处理
+
+```java
+} catch (SQLException e) {
+    // ....
+}
+```
+
+6. 资源关闭
+
+```java
+if (stmt != null) {
+    try {
+        stmt.close();
+    } catch (SQLException e) {
+        System.out.println("failed to close statement: " + e);
+    }
+}
+if (con != null) {
+    try {
+        con.close();
+    } catch (SQLException e) {
+        System.out.println("failed to close connection: " + e);
+    }
+}
+```
+
+> JdbcTemplate的组成
+
+![image-20230203105820883](Spring揭秘.assets/JdbcTemplate的继承结构.png)
+
+JdbcOperations：定义执行JDBC操作的API
+
+JdbcAccessor：抽象类，提供公共属性，如：
+
+- DataSource：保存数据库资源属性
+- SQLExceptionTranslator：用来SQLException转换成Spring体系异常
+
+> 关于JdbcTemplate模板方法模式的使用
+
+org.springframework.jdbc.core.JdbcTemplate#execute(org.springframework.jdbc.core.StatementCallback<T>)
+
+由下可以看出，我们通过传入的StatementCallback来完成模板方法的构造（StatementCallback作为抽象，模板方法不关心业务SQL是如何，业务逻辑通过回调方法来实现）。通过实现回调方法`StatementCallback.doInStatement`来实现不同业务SQL的参数拼接，结果集处理。
+
+```java
+public <T> T execute(StatementCallback<T> action) throws DataAccessException {
+    Assert.notNull(action, "Callback object must not be null");
+
+    Connection con = DataSourceUtils.getConnection(obtainDataSource());
+    Statement stmt = null;
+    try {
+        stmt = con.createStatement();
+        applyStatementSettings(stmt);
+
+        // 真正执行业务逻辑，根据传入的StatementCallback
+        T result = action.doInStatement(stmt);
+        
+        handleWarnings(stmt);
+        return result;
+    }
+    catch (SQLException ex) {
+        // Release Connection early, to avoid potential connection pool deadlock
+        // in the case when the exception translator hasn't been initialized yet.
+        String sql = getSql(action);
+        JdbcUtils.closeStatement(stmt);
+        stmt = null;
+        DataSourceUtils.releaseConnection(con, getDataSource());
+        con = null;
+        throw translateException("StatementCallback", sql, ex);
+    }
+    finally {
+        JdbcUtils.closeStatement(stmt);
+        DataSourceUtils.releaseConnection(con, getDataSource());
+    }
+}
+```
+
+由上面代码可以看到，每次执行之前都会调用`applyStatementSettings(stmt)`，主要用来控制查询行为。
+
+```java
+protected void applyStatementSettings(Statement stmt) throws SQLException {
+    // 单次拉取数量
+    int fetchSize = getFetchSize();
+    if (fetchSize != -1) {
+        stmt.setFetchSize(fetchSize);
+    }
+    // 返回最大行数
+    int maxRows = getMaxRows();
+    if (maxRows != -1) {
+        stmt.setMaxRows(maxRows);
+    }
+    // 超时时间
+    DataSourceUtils.applyTimeout(stmt, getDataSource(), getQueryTimeout());
+}
+```
+
+#### SQLExceptionTranslator
+
+转译异常：SQLException -> Spring Exception
+
+```java
+public interface SQLExceptionTranslator {
+   DataAccessException translate(String task, @Nullable String sql, SQLException ex);
+}
+```
+
+![image-20230203114313734](Spring揭秘.assets/SQLExceptionTranslator.png)
+
+translator在异常转译过程中，当一个translator解析不了异常时会有一个降级解析的过程，如：
+
+```java
+SQLErrorCodeSQLExceptionTranslator -> SQLExceptionSubclassTranslator -> SQLStateSQLExceptionTranslator
+```
+
+- SQLStateSQLExceptionTranslator：主要用于JDK6发布JDBC4新定义的异常。
+- SQLErrorCodeSQLExceptionTranslator：基于SQLException返回的ErrorCode进行异常解析，如果解析失败会降级到SQLStateSQLExceptionTranslator进行解析。
+
+> 异常转译流程
+
+1. 检查是否定义了customTranslate，有则走自定义的customTranslate，可以通过 `extend SQLErrorCodeSQLExceptionTranslator`重写该方法。
+2. SQLErrorCodesFactory加载SQLErrorCodes
+3. doTranslate
+4. fallback.translate
+
+> 加载SQLErrorCode
+
+Spring默认存放各种ErrorCode的路径是：org/springframework/jdbc/support/sql-error-codes.xml，并由`org.springframework.jdbc.support.SQLErrorCodesFactory`对其进行资源加载，存放到一个Map中。
+
+我们也可以在Classpath下自定义sql-error-codes.xml，覆盖Spring默认的errorCode。
+
+```java
+private final Map<String, SQLErrorCodes> errorCodesMap;
+private final Map<DataSource, SQLErrorCodes> dataSourceCache = new ConcurrentReferenceHashMap<>(16);
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
