@@ -2021,7 +2021,15 @@ private final Map<String, SQLErrorCodes> errorCodesMap;
 private final Map<DataSource, SQLErrorCodes> dataSourceCache = new ConcurrentReferenceHashMap<>(16);
 ```
 
+#### ResultSet处理
 
+结果集处理共有3个接口：ResultSetExtractor、RowCallbackHandler、RowMapper
+
+demo: com.wenqi.dao.jdbctemplate.ResultSetDemo
+
+- ResultSetExtractor：批量解析，返回Object类型，我们可以对该Object类型的结果强转成我们需要的结果类型。
+- RowMapper：逐行解析，返回List类型；
+- RowCallbackHandler：逐行解析，无返回值。
 
 
 
