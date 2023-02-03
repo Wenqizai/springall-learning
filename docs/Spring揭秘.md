@@ -1827,11 +1827,17 @@ PT in method[method1] >>>>>>>StopWatch '': running time = 85000 ns; [] took 8500
 
 Spring同一数据访问异常层次，并以JDBC API最佳实践来同一各种ORM方法。为我们访问数据库提供了同一的异常处理机制和统一的模板方法。
 
+## JDBC
 
+JDBC标准主要面向较为底层的数据库操作，屏蔽了数据厂商提供一套统一的API，包括连接、SQL拼接、结果集解析、异常处理、POJO对象映射等等。
 
+当我们使用JDBC时，会面临编写大量相同代码情况，而且资源创建和释放交给调用方处理，对调用方的编码能力要求也高，一不小心就有可能使用完忘记释放资源等等问题。
 
+- 资源没有关闭，如：Connection、Statement、ResultSet；
+- ResultSet多层嵌套时，没有做个关闭ResultSet；
+- 异常统一都用`SQLException`，没有将异常子类化。异常区分仅通过ErrorCode，而ErrorCode的定义规范却由各个数据库的提供商定义（获取ErrorCode方法：`java.sql.SQLException#getErrorCode`）。
 
-
+demo：com.wenqi.dao.jdbc.DAOWithA
 
 
 
