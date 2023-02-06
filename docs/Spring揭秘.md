@@ -2031,9 +2031,30 @@ demo: com.wenqi.dao.jdbctemplate.ResultSetDemo
 - RowMapper：逐行解析，返回List类型；
 - RowCallbackHandler：逐行解析，无返回值。
 
+#### DataSource
 
+DataSource基本角色是ConnectionFactory，所有的数据库连接都通过DataSource接口统一管理。
 
+> 简单DataSource实现
 
+- DriverManagerDataSource：基于DriverManager上构建，每次返回新连接；
+- SingleConnectionDataSource：基于DriverManagerDataSource上构建，每次返回相同一个连接（同一个引用）；
+
+> 缓冲池的DataSource实现
+
+这一类DataSource的实现，除了提供作为ConnectionFactory角色的基本功能之外，内部还会通过连接缓冲池对数据库连接进行管理。
+
+数据库连接缓冲池，可以在系统启动之初就初始化一定数量的数据库连接以备用，返回给客户端的Connection对象通过c1ose()方法被关闭，实际上只是被返回给缓冲池，而不是真正的被关闭。这极大地促进了数据库连接资源的复用，进而提高系统性能。
+
+- DruidDataSource
+
+> 支持分布式事务DataSource实现
+
+- XADataSource
+
+#### JdbcDaoSupport
+
+JdbcDaoSupport内部组合了`JdbcTemplate`、`DataSource`、`Connection`、`SQLExceptionTranslator`等等组件，我们可以直接使用JdbcDaoSupport来操作DAO API。
 
 
 

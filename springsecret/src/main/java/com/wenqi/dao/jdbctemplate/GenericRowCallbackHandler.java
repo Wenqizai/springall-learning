@@ -1,5 +1,7 @@
 package com.wenqi.dao.jdbctemplate;
 
+import com.wenqi.dao.common.DataSourceUtil;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 
 import java.sql.ResultSet;
@@ -19,6 +21,22 @@ public class GenericRowCallbackHandler<T> implements RowCallbackHandler {
         Customer customer = new Customer();
         customer.setFirstName(rs.getString(1));
         customer.setLastName(rs.getString(2));
-        collections.add(customer);
+        collections.add((T) customer);
+    }
+
+    public List<T> getResult() {
+        return collections;
+    }
+
+    public void clear() {
+        collections.clear();
+    }
+
+    public static void main(String[] args) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(DataSourceUtil.getDataSource());
+        GenericRowCallbackHandler<Customer> handler = new GenericRowCallbackHandler<>();
+        jdbcTemplate.query("select * from customer", handler);
+        List<Customer> result = handler.getResult();
+        result.clear();
     }
 }
