@@ -2056,7 +2056,13 @@ DataSource基本角色是ConnectionFactory，所有的数据库连接都通过Da
 
 JdbcDaoSupport内部组合了`JdbcTemplate`、`DataSource`、`Connection`、`SQLExceptionTranslator`等等组件，我们可以直接使用JdbcDaoSupport来操作DAO API。
 
+## ORM集成
 
+Spring提供ORM集成解决方案主要有:
+
+- 同一的资源管理方式
+- 特定于ORM的数据访问异常到Spring同一异常体系的转译
+- 同一的数据访问事务管理及控制方式
 
 
 
