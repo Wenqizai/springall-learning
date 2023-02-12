@@ -2066,7 +2066,7 @@ Spring提供ORM集成解决方案主要有:
 
 # 事务管理
 
-## 认识事物
+## 认识事务
 
 > 事务的ACID属性
 
@@ -2092,17 +2092,32 @@ Spring提供上述的4种事务隔离级别，但部分数据库支持部分的�
 
 如：Oracle仅支持Read Commited和Serializable，默认Read Commited；MySQL支持4种事务隔离级别，默认为Repeatable Read。
 
+> 事务的成员
 
+- Resource Manager：负责存储并管理系统数据资源的状态，如数据库服务器、JMS消息服务器等都是响应的Resource Manager。
+- Transaction Processing Monitor：职责是在分布式事务场景中协调包含多个RM的事务处理。
+- Transaction Manager：可以认为是Transaction Processing Monitor的核心模块，直接负责多RM之间事务处理的协调工作，并提供事务界定（Transaction Demarcation）、事务上下文传播（Transaction Context Propagation）等功能接口。
+- Application：以独立形式存在的或者运行于容器中的应用程序，可以认为是事务边界的触发点。
 
+> 事务的类型
 
+- 全局事务
 
+如果整个事务处理过程中有多个RM参与，那么需要引入Transaction Processing Monitor来协调多个RM之间的事务处理。Transaction Processing Monitor将采用两阶段提交（Two-Phase Commit）协议来保证整个事务的ACID属性。
 
+这种场景下的事务，就成为全局事务或者分布式事务。
 
+<img src="Spring揭秘.assets/全局事务示意图.png" alt="image-20230212101703454" style="zoom:50%;" />
 
+- 局部事务
 
+如果当前事务只有一个RM参与其中，我们可以称当前事务为局部事务。
 
+通常局部事务只包含一个RM，所以无需引入 TP Monitor来协调处理事务，直接使用RM的内置的事务支持。
 
+<img src="Spring揭秘.assets/局部事务示意图.png" alt="image-20230212101836657" style="zoom:50%;" />
 
+简单来说：全局事务与局部事务的区别，就看一个事务处理中涉及多少个RM。
 
 
 
