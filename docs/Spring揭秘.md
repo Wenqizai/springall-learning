@@ -2119,6 +2119,27 @@ Spring提供上述的4种事务隔离级别，但部分数据库支持部分的�
 
 简单来说：全局事务与局部事务的区别，就看一个事务处理中涉及多少个RM。
 
+## Java事务支持
+
+Java的局部事务处理主要通过connection来处理。
+
+```java
+Connection connection = dataSource.getConnection();
+connection.setAutoCommit(false);
+connection.commit();
+connection.rollback();
+```
+
+Java分布式事务支持，主要通过JTA（Java Transaction API）或 JCA （Java Connector Architecture）提供支持。
+
+> Java事务支持的痛点
+
+1. 事务代码和业务代码高度耦合；
+2. 事务异常处理体系;
+   1. 没有同意的事务相关异常的体系、每个API都有特定的异常；
+   2. 许多事务管理代码使用过程中抛出的异常是checked exception，需要在业务代码中捕获处理；
+3. 事务处理的API多样性；
+
 
 
 
