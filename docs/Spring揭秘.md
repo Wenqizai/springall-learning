@@ -2140,19 +2140,44 @@ Java分布式事务支持，主要通过JTA（Java Transaction API）或 JCA （
    2. 许多事务管理代码使用过程中抛出的异常是checked exception，需要在业务代码中捕获处理；
 3. 事务处理的API多样性；
 
+## Spring事务
 
+Spring事务框架设计理念的基本原则是：让事务管理的关注点与数据访问的关注点相分离。
 
+- 屏蔽事务资源的管理，交给框架复杂，业务层只管调用事务抽象的API；
+- 屏蔽数据资源，框架处理不同数据源的差别，业务层只管调用相关的API；
 
+### PlatformTransactionManager
 
+org.springframework.transaction.PlatformTransactionManager：是Spring事务抽象架构的核心接口，主要作用是为引用程序提供事务界定的统一方式。
 
+```java
+public interface PlatformTransactionManager {
+    TransactionStatus getTransaction(TransactionDefinition var1) throws TransactionException;
 
+    void commit(TransactionStatus var1) throws TransactionException;
 
+    void rollback(TransactionStatus var1) throws TransactionException;
+}
+```
 
+我们知道JDBC使用Connection来完成事务操作，而Hibernate使用Session来完成事务操作。针对上述API的差异，我们可以将Connection或Session其绑定到PlatformTransactionManager，我们只关心PlatformTransactionManager的api调用，而不关心底层用的是Connection还是Session。只需要实现不同的PlatformTransactionManager即可。
 
+> Demo
 
+com.wenqi.dao.transaction.JdbcTransactionManager
 
+从Demo中发现的问题：事务是否创建跟API调用顺序紧密关联，Spring如何保证这个调用顺序是正确执行的呢？
 
+> 铁三角
 
+<img src="Spring揭秘.assets/PlatformTransactionManager的三角关系.png" alt="image-20230213114815042" style="zoom:50%;" />
+
+- PlatformTransactionManager：负责界定事务边界。
+
+- TransactionDefinition：负责定义事务相关属性，包括隔离级别、传播行为等。
+
+- TransactionStatus：事务开启之后，负责保存事务结束期间的事务状态。
 
 
 
