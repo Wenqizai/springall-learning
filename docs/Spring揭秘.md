@@ -2179,23 +2179,68 @@ com.wenqi.dao.transaction.JdbcTransactionManager
 
 - TransactionStatus：事务开启之后，负责保存事务结束期间的事务状态。
 
+### TransactionDefinition
 
+定义事务的相关属性，包括：
 
+- 事务的隔离级别（Isolation）
+- 事务的传播行为（Propagation Behavior）
+- 事务的超时时间（Timeout）
+- 是否为只读事务（ReadOnly）
 
+事务的隔离级别，包括：
 
+-  ISOLATION_DEFAULT：默认隔离级别，不同数据库不同
+-  ISOLATION_READ_UNCOMMITTED
+-  ISOLATION_READ_COMMITTED
+-  ISOLATION_REPEATABLE_READ
+-  ISOLATION_SERIALIZABLE
 
+事务的传播行为表示整个事务处理过程中所跨越的业务对象，将以什么样的行为参与事务（声明式事务中更多依赖于该属性）。事务的传播行为包括：
 
+>  PROPAGATION_REQUIRED
 
+1. 如果当前存在一个事务，则加入当前事务；
+2. 如果当前不存在任何事务，则创建一个新的事务；
 
+默认的事务传播行为，总之，至少保证在一个事务中运行。
 
+>  PROPAGATION_SUPPORTS
 
+1. 如果当前存在一个事务，则加入当前事务；
+2. 如果当前不存在任何事务，则直接执行。
 
+应用场景：`A.service()`更新数据库，调用`B.service()`进行查询。
 
+如果`B.service()`的传播行为是`PROPAGATION_SUPPORTS`且设置`Read Commited`，`B.service()`则可以读到`A.service()`更新后的数据
 
+>  PROPAGATION_MANDATORY
 
+1. 强制要求当前存在一个事务，不存在则抛出异常。
 
+应用场景：如果某个方法需要事务支持，但自身又不管理事务提交或回滚，使用PROPAGATION_MANDATORY比较合适。
 
+>  PROPAGATION_REQUIRES_NEW
 
+1. 不管当前是否存在事务，都会创建新的事务；
+2. 如果当前存在事务，则把当前事务挂起。
+
+应用场景：外层事务调用内层的事务方法，内层方法的成功与否都不会影响到外层事务的事务回滚。比如：当前业务方法执行过程中，向数据库添加一些日志，业务日志添加成功与否都不会影响到外层业务方法的执行。
+
+>  PROPAGATION_NOT_SUPPORTED
+
+1. 不支持当前事务，在没有事务的情况下执行；
+2. 如果当前存在事务，当前事务将会被挂起。
+
+由PlatformTransactionManager实现是否支持挂起事务。
+
+>  PROPAGATION_NEVER
+
+永远不需要当前存在事务，如果存在则抛出异常。
+
+>  PROPAGATION_NESTED
+
+如果存在当前事务，则在当前事务的一个嵌套事务中执行。
 
 
 
