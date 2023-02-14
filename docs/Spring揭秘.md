@@ -2242,9 +2242,68 @@ com.wenqi.dao.transaction.JdbcTransactionManager
 
 如果存在当前事务，则在当前事务的一个嵌套事务中执行。
 
+与`PROPAGATION_REQUIRES_NEW`的区别：
 
+- `PROPAGATION_REQUIRES_NEW`创建的内层事务与外层事务是同一级别，内层事务执行时，外层事务被挂起；
 
+  `PROPAGATION_NESTED`创建的嵌套子事务寄生于外层事务，子事务执行过程中，外层事务也是active状态。
 
+  
+
+- `PROPAGATION_REQUIRES_NEW`的内外事务状态独立，互不干扰；
+
+  `PROPAGATION_NESTED`的子事务属于外层事务一部分，不能独立存在，与外层事务共有事务状态。
+
+应用场景：`A.service()`业务方法，调用`B.service()`进行查询，`B.service()`调用报错时调用`C.service()`。此时可以设置`B.service()`和`C.service()`方法为`PROPAGATION_NESTED`。
+
+```java
+// PROPAGATION_REQUIRED
+A.service() {
+    try {
+        // PROPAGATION_NESTED
+        B.service();
+    } catch(Exception e) {
+        // PROPAGATION_NESTED
+        C.service();
+    }
+}
+```
+
+#### 相关实现
+
+TransactionDefinition 只是一个接口，必然存在相关的实现。实现主要划分成2大类：编程式事务和声明式事务。
+
+<img src="Spring揭秘.assets/TransactionDefinition事务两大类.png" alt="image-20230214101630595" style="zoom:50%;" />
+
+> 编程式事务
+
+主要接口：org.springframework.transaction.TransactionDefinition
+
+默认实现类：org.springframework.transaction.support.DefaultTransactionDefinition
+
+`org.springframework.transaction.support.TransactionTemplate extends DefaultTransactionDefinition`：可以使用TransactionTemplate 来设置事务的属性。
+
+```java
+private int propagationBehavior = PROPAGATION_REQUIRED;
+private int isolationLevel = ISOLATION_DEFAULT;
+private int timeout = TIMEOUT_DEFAULT;
+private boolean readOnly = false;
+private String name;
+```
+
+> 声明式事务
+
+- 主要接口
+
+  org.springframework.transaction.interceptor.TransactionAttribute，接口定义方法`rollbackOn()`，用来指定事务回滚的Throwable。
+
+- 默认实现
+
+  org.springframework.transaction.interceptor.DefaultTransactionAttribute
+
+- 其他实现
+  -  RuleBasedTransactionAttribute：用来匹配多个回滚规则，包括NoRollbackRuleAttribute和RollbackRuleAttribute
+  -  DelegatingTransactionAttribute：抽象类，目的是子类化，委托给DefaultTransactionAttribute或RuleBasedTransactionAttribute处理。
 
 
 
