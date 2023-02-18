@@ -2174,10 +2174,12 @@ com.wenqi.dao.transaction.JdbcTransactionManager
 <img src="Spring揭秘.assets/PlatformTransactionManager的三角关系.png" alt="image-20230213114815042" style="zoom:50%;" />
 
 - PlatformTransactionManager：负责界定事务边界。
-
 - TransactionDefinition：负责定义事务相关属性，包括隔离级别、传播行为等。
-
 - TransactionStatus：事务开启之后，负责保存事务结束期间的事务状态。
+
+#### 实现
+
+
 
 ### TransactionDefinition
 
@@ -2281,7 +2283,7 @@ TransactionDefinition 只是一个接口，必然存在相关的实现。实现�
 
 默认实现类：org.springframework.transaction.support.DefaultTransactionDefinition
 
-`org.springframework.transaction.support.TransactionTemplate extends DefaultTransactionDefinition`：可以使用TransactionTemplate 来设置事务的属性。
+`org.springframework.transaction.support.TransactionTemplate extends DefaultTransactionDefinition`：可以使用TransactionTemplate 来设置事务的属性，执行事务（模板方法 + callback）。
 
 ```java
 private int propagationBehavior = PROPAGATION_REQUIRED;
@@ -2302,8 +2304,43 @@ private String name;
   org.springframework.transaction.interceptor.DefaultTransactionAttribute
 
 - 其他实现
-  -  RuleBasedTransactionAttribute：用来匹配多个回滚规则，包括NoRollbackRuleAttribute和RollbackRuleAttribute
-  -  DelegatingTransactionAttribute：抽象类，目的是子类化，委托给DefaultTransactionAttribute或RuleBasedTransactionAttribute处理。
+  - RuleBasedTransactionAttribute
+  
+    用来匹配多个回滚规则，包括NoRollbackRuleAttribute和RollbackRuleAttribute，其中 `NoRollbackRuleAttribute extends RollbackRuleAttribute。`
+  
+  - DelegatingTransactionAttribute：抽象类，目的是子类化，委托给DefaultTransactionAttribute或RuleBasedTransactionAttribute处理。
+
+### TransactionStatus
+
+TransactionStatus：定义标识整个事务处理过程中的事务状态，提供以下功能：
+
+- 查询事务的状态;
+- 通过`setRollbackOnly()`标记当前事务以使其回滚；
+- 如果相应的PlatformTransactionManager支持Savepoint，可以通过TransactionStatus在当前事务中创建内部嵌套事务。
+
+默认实现：org.springframework.transaction.support.DefaultTransactionStatus
+
+```java
+public interface TransactionStatus extends SavepointManager {
+    boolean isNewTransaction();
+
+    boolean hasSavepoint();
+
+    void setRollbackOnly();
+
+    boolean isRollbackOnly();
+
+    void flush();
+
+    boolean isCompleted();
+}
+```
+
+
+
+<img src="Spring揭秘.assets/TransactionStatus的继承层次.png" alt="image-20230215141848802" style="zoom:50%;" />
+
+
 
 
 
