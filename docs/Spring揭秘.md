@@ -2177,9 +2177,68 @@ com.wenqi.dao.transaction.JdbcTransactionManager
 - TransactionDefinition：负责定义事务相关属性，包括隔离级别、传播行为等。
 - TransactionStatus：事务开启之后，负责保存事务结束期间的事务状态。
 
-#### 实现
+#### 相关实现
 
+主要划分成两大类：**面向局部**事务和**面向全局**事务。
 
+> 面向局部事务
+
+面向局部事务主要是针对不同的数据库访问技术，提供不同的实现，如：
+
+- 针对JDBC：DataSourceTransactionManager
+- 针对Hibernate：HibernateTransactionManager
+
+> 面向全局事务
+
+主要实现类：org.springframework.transaction.jta.JtaTransactionManager
+
+> 实现的骨架
+
+PlatformTransactionManager的各个子类在实现时，基本上会遵循统一的结构和理念，如下：
+
+- Transaction Object
+
+  Transaction Object承载当前事务的必要信息，PlatformTransactionManager实现类可以根据Transaction Object提供的信息来决定如何处理当前事务。
+
+  示例方法：`org.springframework.jdbc.datasource.DataSourceTransactionManager#doGetTransaction`
+
+-  TransactionSynchronization
+
+  TransactionSynchronization是可以注册到事务处理过程中的回调接口。当事务处理的某些规定时发生时会调TransactionSynchronization的一些方法来执行响应的回调逻辑。
+
+  org.springframework.transaction.support.TransactionSynchronization
+
+- TransactionSynchronizationManager
+
+  TransactionSynchronizationManager用来管理TransactionSynchronization、当前事务状态以及具体事务资源。
+
+##### DataSourceTransactionManager
+
+![image-20230219103616159](Spring%E6%8F%AD%E7%A7%98.assets/image-20230219103616159.png)
+
+Spring的实现模式：策略 + 模板方法
+
+AbstractPlatformTransactionManager作为父类，以模板方法的形式封装了固定的事务处理逻辑，只将与事务资源相关的操作以protected或者abstract方法的形式留给子类DataSourceTransactionManager来实现。
+
+> AbstractPlatformTransactionManager完成的主要模板方法：
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#getTransaction
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#rollback
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#commit
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#suspend
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#resume
+
+> AbstractPlatformTransactionManager帮助子类完成的逻辑
+
+- 判定是否存在当前事务，然后根据判断结果执行不同的处理逻辑；
+- 结合是否存在当前事务的情况，根据TransactionDefinition中指定的传播行为的同步语义执行后继逻辑；
+- 根据情况挂起或者恢复事务；
+- 提交事务之前检查readOnly字段是否被设置，如果是，则用事务回滚代替事务提交；
+- 如果事务的的Synchronization处于active状态，在事务处理的规定时点触发注册的Synchronization回调接口。
 
 ### TransactionDefinition
 
