@@ -2204,13 +2204,13 @@ PlatformTransactionManager的各个子类在实现时，基本上会遵循统一
 
 -  TransactionSynchronization
 
-  TransactionSynchronization是可以注册到事务处理过程中的回调接口。当事务处理的某些规定时发生时会调TransactionSynchronization的一些方法来执行响应的回调逻辑。
+  TransactionSynchronization是可以**注册到事务处理过程中的回调接口**。当事务处理的某些规定时发生时会调TransactionSynchronization的一些方法来执行响应的回调逻辑。
 
   org.springframework.transaction.support.TransactionSynchronization
 
 - TransactionSynchronizationManager
 
-  TransactionSynchronizationManager用来管理TransactionSynchronization、当前事务状态以及具体事务资源。
+  TransactionSynchronizationManager用来管理当前线程TransactionSynchronization、当前事务状态以及具体事务资源。
 
 ##### DataSourceTransactionManager
 
