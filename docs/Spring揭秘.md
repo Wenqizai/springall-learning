@@ -2214,7 +2214,7 @@ PlatformTransactionManager的各个子类在实现时，基本上会遵循统一
 
 ##### DataSourceTransactionManager
 
-![image-20230219103616159](Spring%E6%8F%AD%E7%A7%98.assets/image-20230219103616159.png)
+![AbstractPlatformTransactionManager实现层次.png](Spring%E6%8F%AD%E7%A7%98.assets/AbstractPlatformTransactionManager实现层次.png)
 
 Spring的实现模式：策略 + 模板方法
 
@@ -2239,6 +2239,185 @@ org.springframework.transaction.support.AbstractPlatformTransactionManager#resum
 - 根据情况挂起或者恢复事务；
 - 提交事务之前检查readOnly字段是否被设置，如果是，则用事务回滚代替事务提交；
 - 如果事务的的Synchronization处于active状态，在事务处理的规定时点触发注册的Synchronization回调接口。
+
+> getTransaction
+
+org.springframework.transaction.support.AbstractPlatformTransactionManager#getTransaction
+
+```java
+public final TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException {
+  // 获取当前transaction Object, abstract方法由子类实现
+  // 返回Object类型, AbstractPlatformTransactionManager类不关心具体的类型, transaction Object传参至子类, 由子类强转类型
+  Object transaction = doGetTransaction();
+
+  // Cache debug flag to avoid repeated checks.
+  boolean debugEnabled = logger.isDebugEnabled();
+
+  if (definition == null) {
+    // 构造默认的事务定义数据
+    // Use defaults if no transaction definition given.
+    definition = new DefaultTransactionDefinition();
+  }
+
+  // 是否存在当前事务(同一个事务), 不同隔离级别和事务传播行为针对事务有不同的处理方式 
+  if (isExistingTransaction(transaction)) {
+    // 存在当前事务, 统一处理存在的当前事务, 并返回事务对应的TransactionStatus
+    // Existing transaction found -> check propagation behavior to find out how to behave.
+    return handleExistingTransaction(definition, transaction, debugEnabled);
+  }
+
+  // Check definition settings for new transaction.
+  if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
+    throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
+  }
+
+  // No existing transaction found -> check propagation behavior to find out how to proceed.
+  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
+    throw new IllegalTransactionStateException(
+      "No existing transaction found for transaction marked with propagation 'mandatory'");
+  }
+  else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||
+           definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
+           definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+    SuspendedResourcesHolder suspendedResources = suspend(null);
+    if (debugEnabled) {
+      logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
+    }
+    try {
+      boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+      DefaultTransactionStatus status = newTransactionStatus(
+        definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+      doBegin(transaction, definition);
+      prepareSynchronization(status, definition);
+      return status;
+    }
+    catch (RuntimeException ex) {
+      resume(null, suspendedResources);
+      throw ex;
+    }
+    catch (Error err) {
+      resume(null, suspendedResources);
+      throw err;
+    }
+  }
+  else {
+    // Create "empty" transaction: no actual transaction, but potentially synchronization.
+    boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+    return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);
+  }
+}
+```
+
+> handleExistingTransaction
+
+
+```java
+/**
+ * Create a TransactionStatus for an existing transaction.
+ */
+private TransactionStatus handleExistingTransaction(
+  TransactionDefinition definition, Object transaction, boolean debugEnabled)
+  throws TransactionException {
+
+  // TransactionDefinition.PROPAGATION_NEVER, 抛出异常并退出
+  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
+    throw new IllegalTransactionStateException(
+      "Existing transaction found for transaction marked with propagation 'never'");
+  }
+
+  // TransactionDefinition.PROPAGATION_NOT_SUPPORTED, 挂起当前事务, r
+  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED) {
+    if (debugEnabled) {
+      logger.debug("Suspending current transaction");
+    }
+    Object suspendedResources = suspend(transaction);
+    boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+    return prepareTransactionStatus(
+      definition, null, false, newSynchronization, debugEnabled, suspendedResources);
+  }
+
+  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW) {
+    if (debugEnabled) {
+      logger.debug("Suspending current transaction, creating new transaction with name [" +
+                   definition.getName() + "]");
+    }
+    SuspendedResourcesHolder suspendedResources = suspend(transaction);
+    try {
+      boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+      DefaultTransactionStatus status = newTransactionStatus(
+        definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+      doBegin(transaction, definition);
+      prepareSynchronization(status, definition);
+      return status;
+    }
+    catch (RuntimeException beginEx) {
+      resumeAfterBeginException(transaction, suspendedResources, beginEx);
+      throw beginEx;
+    }
+    catch (Error beginErr) {
+      resumeAfterBeginException(transaction, suspendedResources, beginErr);
+      throw beginErr;
+    }
+  }
+
+  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+    if (!isNestedTransactionAllowed()) {
+      throw new NestedTransactionNotSupportedException(
+        "Transaction manager does not allow nested transactions by default - " +
+        "specify 'nestedTransactionAllowed' property with value 'true'");
+    }
+    if (debugEnabled) {
+      logger.debug("Creating nested transaction with name [" + definition.getName() + "]");
+    }
+    if (useSavepointForNestedTransaction()) {
+      // Create savepoint within existing Spring-managed transaction,
+      // through the SavepointManager API implemented by TransactionStatus.
+      // Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.
+      DefaultTransactionStatus status =
+        prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);
+      status.createAndHoldSavepoint();
+      return status;
+    }
+    else {
+      // Nested transaction through nested begin and commit/rollback calls.
+      // Usually only for JTA: Spring synchronization might get activated here
+      // in case of a pre-existing JTA transaction.
+      boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+      DefaultTransactionStatus status = newTransactionStatus(
+        definition, transaction, true, newSynchronization, debugEnabled, null);
+      doBegin(transaction, definition);
+      prepareSynchronization(status, definition);
+      return status;
+    }
+  }
+
+  // Assumably PROPAGATION_SUPPORTS or PROPAGATION_REQUIRED.
+  if (debugEnabled) {
+    logger.debug("Participating in existing transaction");
+  }
+  if (isValidateExistingTransaction()) {
+    if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
+      Integer currentIsolationLevel = TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();
+      if (currentIsolationLevel == null || currentIsolationLevel != definition.getIsolationLevel()) {
+        Constants isoConstants = DefaultTransactionDefinition.constants;
+        throw new IllegalTransactionStateException("Participating transaction with definition [" +
+                                                   definition + "] specifies isolation level which is incompatible with existing transaction: " +
+                                                   (currentIsolationLevel != null ?
+                                                    isoConstants.toCode(currentIsolationLevel, DefaultTransactionDefinition.PREFIX_ISOLATION) :
+                                                    "(unknown)"));
+      }
+    }
+    if (!definition.isReadOnly()) {
+      if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+        throw new IllegalTransactionStateException("Participating transaction with definition [" +
+                                                   definition + "] is not marked as read-only but existing transaction is");
+      }
+    }
+  }
+  boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+  return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
+}
+```
 
 ### TransactionDefinition
 
