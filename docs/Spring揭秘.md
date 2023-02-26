@@ -2147,7 +2147,7 @@ Spring事务框架设计理念的基本原则是：让事务管理的关注点�
 - 屏蔽事务资源的管理，交给框架复杂，业务层只管调用事务抽象的API；
 - 屏蔽数据资源，框架处理不同数据源的差别，业务层只管调用相关的API；
 
-### PlatformTransactionManager
+###  PlatformTransactionManager
 
 org.springframework.transaction.PlatformTransactionManager：是Spring事务抽象架构的核心接口，主要作用是为引用程序提供事务界定的统一方式。
 
@@ -2319,47 +2319,50 @@ private TransactionStatus handleExistingTransaction(
   TransactionDefinition definition, Object transaction, boolean debugEnabled)
   throws TransactionException {
 
-  // TransactionDefinition.PROPAGATION_NEVER, 抛出异常并退出
+  // 1. TransactionDefinition.PROPAGATION_NEVER, 抛出异常并退出
   if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
     throw new IllegalTransactionStateException(
       "Existing transaction found for transaction marked with propagation 'never'");
   }
 
-  // TransactionDefinition.PROPAGATION_NOT_SUPPORTED, 挂起当前事务, r
+  // 2. TransactionDefinition.PROPAGATION_NOT_SUPPORTED, 挂起当前事务, 然后返回
   if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED) {
     if (debugEnabled) {
       logger.debug("Suspending current transaction");
     }
-    Object suspendedResources = suspend(transaction);
+    Object suspendedResources = suspend(transaction); // 挂起当前事务
     boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+    // 返回一个无事务的TransactionStatus, 构建器的第二, 三个参数
+    // PROPAGATION_NOT_SUPPORTED: 无事务下运行, 有当前事务则挂起当前事务
     return prepareTransactionStatus(
       definition, null, false, newSynchronization, debugEnabled, suspendedResources);
   }
 
+  // 3. PROPAGATION_REQUIRES_NEW: 挂起当前事务, 创建一个新的事务
   if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW) {
     if (debugEnabled) {
       logger.debug("Suspending current transaction, creating new transaction with name [" +
                    definition.getName() + "]");
     }
-    SuspendedResourcesHolder suspendedResources = suspend(transaction);
+    SuspendedResourcesHolder suspendedResources = suspend(transaction); // 挂起当前事务
     try {
       boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
-      DefaultTransactionStatus status = newTransactionStatus(
-        definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+      // 创建新的事务
+      DefaultTransactionStatus status = newTransactionStatus(definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+      // 开始新的事务
       doBegin(transaction, definition);
       prepareSynchronization(status, definition);
       return status;
-    }
-    catch (RuntimeException beginEx) {
+    } catch (RuntimeException beginEx) { // begin异常, 恢复之前的事务
       resumeAfterBeginException(transaction, suspendedResources, beginEx);
       throw beginEx;
-    }
-    catch (Error beginErr) {
+    } catch (Error beginErr) { // begin错误, 恢复之前的事务
       resumeAfterBeginException(transaction, suspendedResources, beginErr);
       throw beginErr;
     }
   }
 
+  // 4. PROPAGATION_NESTED: 如果存在当前事务，则在当前事务的一个嵌套事务中执行。
   if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
     if (!isNestedTransactionAllowed()) {
       throw new NestedTransactionNotSupportedException(
@@ -2369,6 +2372,8 @@ private TransactionStatus handleExistingTransaction(
     if (debugEnabled) {
       logger.debug("Creating nested transaction with name [" + definition.getName() + "]");
     }
+    // 使用savepoint创建嵌套事务, 默认为true
+    // 如果子类不支持savepoint创建嵌套事务, 子类可以重写该方法, 如JtaTransactionManager
     if (useSavepointForNestedTransaction()) {
       // Create savepoint within existing Spring-managed transaction,
       // through the SavepointManager API implemented by TransactionStatus.
@@ -2391,10 +2396,13 @@ private TransactionStatus handleExistingTransaction(
     }
   }
 
+  // PROPAGATION_SUPPORTS和PROPAGATION_REQUIRED: 如果当前存在事务则加入当前事务 (进入该方法都是存在当前事务的)
   // Assumably PROPAGATION_SUPPORTS or PROPAGATION_REQUIRED.
   if (debugEnabled) {
     logger.debug("Participating in existing transaction");
   }
+  
+  // definition的事务隔离级别是否和数据库的隔离级别一致, 不一致则抛出异常
   if (isValidateExistingTransaction()) {
     if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
       Integer currentIsolationLevel = TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();
@@ -2407,6 +2415,8 @@ private TransactionStatus handleExistingTransaction(
                                                     "(unknown)"));
       }
     }
+    
+    // definition的ReadOnly是否和数据库的ReadOnly一致, 不一致则抛出异常
     if (!definition.isReadOnly()) {
       if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
         throw new IllegalTransactionStateException("Participating transaction with definition [" +
@@ -2414,6 +2424,8 @@ private TransactionStatus handleExistingTransaction(
       }
     }
   }
+  
+  // 加入当前事务, 不创建新的事物
   boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
   return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
 }
