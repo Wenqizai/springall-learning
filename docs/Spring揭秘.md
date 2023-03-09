@@ -2242,69 +2242,79 @@ org.springframework.transaction.support.AbstractPlatformTransactionManager#resum
 
 > getTransaction
 
+获取事务
+
 org.springframework.transaction.support.AbstractPlatformTransactionManager#getTransaction
 
 ```java
 public final TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException {
-  // 获取当前transaction Object, abstract方法由子类实现
-  // 返回Object类型, AbstractPlatformTransactionManager类不关心具体的类型, transaction Object传参至子类, 由子类强转类型
-  Object transaction = doGetTransaction();
+    // 获取当前transaction Object, abstract方法由子类实现
+    // 返回Object类型, AbstractPlatformTransactionManager类不关心具体的类型, transaction Object传参至子类, 由子类强转类型
+    Object transaction = doGetTransaction();
 
-  // Cache debug flag to avoid repeated checks.
-  boolean debugEnabled = logger.isDebugEnabled();
+    // Cache debug flag to avoid repeated checks.
+    boolean debugEnabled = logger.isDebugEnabled();
 
-  if (definition == null) {
-    // 构造默认的事务定义数据
-    // Use defaults if no transaction definition given.
-    definition = new DefaultTransactionDefinition();
-  }
-
-  // 是否存在当前事务(同一个事务), 不同隔离级别和事务传播行为针对事务有不同的处理方式 
-  if (isExistingTransaction(transaction)) {
-    // 存在当前事务, 统一处理存在的当前事务, 并返回事务对应的TransactionStatus
-    // Existing transaction found -> check propagation behavior to find out how to behave.
-    return handleExistingTransaction(definition, transaction, debugEnabled);
-  }
-
-  // Check definition settings for new transaction.
-  if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
-    throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
-  }
-
-  // No existing transaction found -> check propagation behavior to find out how to proceed.
-  if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
-    throw new IllegalTransactionStateException(
-      "No existing transaction found for transaction marked with propagation 'mandatory'");
-  }
-  else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||
-           definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
-           definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
-    SuspendedResourcesHolder suspendedResources = suspend(null);
-    if (debugEnabled) {
-      logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
+    if (definition == null) {
+        // 构造默认的事务定义数据
+        // Use defaults if no transaction definition given.
+        definition = new DefaultTransactionDefinition();
     }
-    try {
-      boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
-      DefaultTransactionStatus status = newTransactionStatus(
-        definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
-      doBegin(transaction, definition);
-      prepareSynchronization(status, definition);
-      return status;
+
+    // 是否存在当前事务(同一个事务), 不同隔离级别和事务传播行为针对事务有不同的处理方式 
+    if (isExistingTransaction(transaction)) {
+        // 存在当前事务, 统一处理存在的当前事务, 并返回事务对应的TransactionStatus
+        // Existing transaction found -> check propagation behavior to find out how to behave.
+        return handleExistingTransaction(definition, transaction, debugEnabled);
     }
-    catch (RuntimeException ex) {
-      resume(null, suspendedResources);
-      throw ex;
+    
+    // 以下是不存在当前事务的处理情况
+
+    // Check definition settings for new transaction.
+    if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
+        throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
     }
-    catch (Error err) {
-      resume(null, suspendedResources);
-      throw err;
+
+    // TransactionDefinition.PROPAGATION_MANDATORY: 强制要求当前存在一个事务，不存在当前事务则抛出异常。
+    // No existing transaction found -> check propagation behavior to find out how to proceed.
+    if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
+        throw new IllegalTransactionStateException(
+            "No existing transaction found for transaction marked with propagation 'mandatory'");
     }
-  }
-  else {
-    // Create "empty" transaction: no actual transaction, but potentially synchronization.
-    boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
-    return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);
-  }
+    
+    // PROPAGATION_REQUIRED, PROPAGATION_REQUIRES_NEW, PROPAGATION_NESTED: 不存在当前事务时, 创建一个新的事物
+    else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED,  ||
+             definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
+             definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+       
+        // 之所以在doBegin之前先调用传入null的suspend()方法，是因为考虑到如果有注册的Synchronization
+        SuspendedResourcesHolder suspendedResources = suspend(null);
+        if (debugEnabled) {
+            logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
+        }
+        try {
+            boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+            DefaultTransactionStatus status = newTransactionStatus(
+                definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+            doBegin(transaction, definition);
+            prepareSynchronization(status, definition);
+            return status;
+        }
+        catch (RuntimeException ex) {
+            resume(null, suspendedResources);
+            throw ex;
+        }
+        catch (Error err) {
+            resume(null, suspendedResources);
+            throw err;
+        }
+    }
+    else {
+        // 其他情况: 有可能需要处理在事务过程中相关的Synchronization
+        // Create "empty" transaction: no actual transaction, but potentially synchronization.
+        boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+        return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);
+    }
 }
 ```
 
