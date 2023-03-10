@@ -2804,6 +2804,24 @@ public interface TransactionStatus extends SavepointManager {
 
 
 
+## Spring事务管理
+
+### 编程式事务
+
+编程式事务使用方式：PlatformTransactionManager 或 TransactionTemplate。
+
+- TransactionTemplate使用特点：
+  1. 无法往外层抛出checked exception，如果需要处理特定的异常需要子啊callback方法处理；
+  2. 如果不提交事务，手动回滚事务时，需要手动设置标志位setRollbackOnly，最后在commit()方法中回滚事务。
+
+- TransactionTemplate使用示例：
+
+com.wenqi.tx.manage.TransactionTemplateDemo
+
+
+
+### 声明式事务
+
 
 
 
