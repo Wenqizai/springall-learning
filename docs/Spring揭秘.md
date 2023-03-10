@@ -2232,6 +2232,8 @@ org.springframework.transaction.support.AbstractPlatformTransactionManager#suspe
 
 org.springframework.transaction.support.AbstractPlatformTransactionManager#resume
 
+![image-20230310154435869](Spring揭秘.assets/事务与模板的实现类.png)
+
 > AbstractPlatformTransactionManager帮助子类完成的逻辑
 
 - 判定是否存在当前事务，然后根据判断结果执行不同的处理逻辑；
@@ -2239,6 +2241,8 @@ org.springframework.transaction.support.AbstractPlatformTransactionManager#resum
 - 根据情况挂起或者恢复事务；
 - 提交事务之前检查readOnly字段是否被设置，如果是，则用事务回滚代替事务提交；
 - 如果事务的的Synchronization处于active状态，在事务处理的规定时点触发注册的Synchronization回调接口。
+
+##### getTransaction
 
 > getTransaction
 
@@ -2438,6 +2442,204 @@ private TransactionStatus handleExistingTransaction(
   // 加入当前事务, 不创建新的事物
   boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
   return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
+}
+```
+
+##### commit
+
+commit: 由AbstractPlatformTransactionManager定义的模板方法和abstract方法，abstract方法的实委托给子类实现，如isRollbackOnly、doCommit、rollback等方法。
+
+```java
+/**
+ * 
+ * This implementation of commit handles participating in existing
+ * transactions and programmatic rollback requests.
+ * Delegates to <code>isRollbackOnly</code>, <code>doCommit</code> and <code>rollback</code>.
+ * @see org.springframework.transaction.TransactionStatus#isRollbackOnly()
+ * @see #doCommit
+ * @see #rollback
+ */
+public final void commit(TransactionStatus status) throws TransactionException {
+    // 事务是否已经完成
+    if (status.isCompleted()) {
+        throw new IllegalTransactionStateException(
+            "Transaction is already completed - do not call commit or rollback more than once per transaction");
+    }
+
+    DefaultTransactionStatus defStatus = (DefaultTransactionStatus) status;
+    // 事务是否被设置了回滚状态
+    if (defStatus.isLocalRollbackOnly()) {
+        if (defStatus.isDebug()) {
+            logger.debug("Transactional code has requested rollback");
+        }
+        processRollback(defStatus); //处理事务回滚
+        return;
+    }
+    
+    // shouldCommitOnGlobalRollbackOnly: 默认实现是false，如果事务被标记全局回滚则提交事务。
+    if (!shouldCommitOnGlobalRollbackOnly() && defStatus.isGlobalRollbackOnly()) {
+        if (defStatus.isDebug()) {
+            logger.debug("Global transaction is marked as rollback-only but transactional code requested commit");
+        }
+        processRollback(defStatus);
+        // Throw UnexpectedRollbackException only at outermost transaction boundary
+        // or if explicitly asked to.
+        if (status.isNewTransaction() || isFailEarlyOnGlobalRollbackOnly()) {
+            throw new UnexpectedRollbackException(
+                "Transaction rolled back because it has been marked as rollback-only");
+        }
+        return;
+    }
+
+    processCommit(defStatus); // 处理事务提交
+}
+
+/**
+ * 处理事务回滚
+ */
+private void processRollback(DefaultTransactionStatus status) {
+    try {
+        try {
+            // 触发synchronization事件
+            triggerBeforeCompletion(status);
+            // 如果是嵌套事务，通过transactionStatus释放savepoint
+            if (status.hasSavepoint()) {
+                if (status.isDebug()) {
+                    logger.debug("Rolling back transaction to savepoint");
+                }
+                status.rollbackToHeldSavepoint();
+            }
+            // 如果当前是一个新的事务，则子类执行事务回滚
+            else if (status.isNewTransaction()) {
+                if (status.isDebug()) {
+                    logger.debug("Initiating transaction rollback");
+                }
+                doRollback(status);
+            }
+            // 弱国当前存在事务，则设置doSetRollbackOnly状态，由子类实现
+            else if (status.hasTransaction()) {
+                if (status.isLocalRollbackOnly() || isGlobalRollbackOnParticipationFailure()) {
+                    if (status.isDebug()) {
+                        logger.debug("Participating transaction failed - marking existing transaction as rollback-only");
+                    }
+                    doSetRollbackOnly(status);
+                }
+                else {
+                    if (status.isDebug()) {
+                        logger.debug("Participating transaction failed - letting transaction originator decide on rollback");
+                    }
+                }
+            }
+            else {
+                logger.debug("Should roll back transaction but cannot - no transaction available");
+            }
+        }
+        catch (RuntimeException ex) {
+           // 触发synchronization事件
+            triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);
+            throw ex;
+        }
+        catch (Error err) {
+            // 触发synchronization事件
+            triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);
+            throw err;
+        }
+        triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);
+    }
+    finally {
+        // 清理事务资源
+        cleanupAfterCompletion(status);
+    }
+}
+
+
+/**
+ * 处理事务提交
+ */
+private void processCommit(DefaultTransactionStatus status) throws TransactionException {
+    try {
+        boolean beforeCompletionInvoked = false;
+        try {
+            // 事务提交前置处理
+            prepareForCommit(status);
+            triggerBeforeCommit(status);
+            triggerBeforeCompletion(status);
+            beforeCompletionInvoked = true;
+            boolean globalRollbackOnly = false;
+            if (status.isNewTransaction() || isFailEarlyOnGlobalRollbackOnly()) {
+                globalRollbackOnly = status.isGlobalRollbackOnly();
+            }
+            // 如果持有savepoint，则释放（处理嵌套事务的提交）
+            if (status.hasSavepoint()) {
+                if (status.isDebug()) {
+                    logger.debug("Releasing transaction savepoint");
+                }
+                status.releaseHeldSavepoint();
+            }
+            // 如果是新的事务，则提交事务，由子类实现
+            else if (status.isNewTransaction()) {
+                if (status.isDebug()) {
+                    logger.debug("Initiating transaction commit");
+                }
+                doCommit(status); // 提交事务
+            }
+            // Throw UnexpectedRollbackException if we have a global rollback-only
+            // marker but still didn't get a corresponding exception from commit.
+            if (globalRollbackOnly) {
+                throw new UnexpectedRollbackException(
+                    "Transaction silently rolled back because it has been marked as rollback-only");
+            }
+        }
+        catch (UnexpectedRollbackException ex) {
+            // 触发synchronization事件
+            // can only be caused by doCommit
+            triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);
+            throw ex;
+        }
+        catch (TransactionException ex) {
+            // 触发synchronization事件
+            // can only be caused by doCommit
+            if (isRollbackOnCommitFailure()) {
+                doRollbackOnCommitException(status, ex);
+            }
+            else {
+                triggerAfterCompletion(status, TransactionSynchronization.STATUS_UNKNOWN);
+            }
+            throw ex;
+        }
+        catch (RuntimeException ex) {
+            // 触发synchronization事件
+            if (!beforeCompletionInvoked) {
+                triggerBeforeCompletion(status);
+            }
+            doRollbackOnCommitException(status, ex);
+            throw ex;
+        }
+        catch (Error err) {
+            // 触发synchronization事件
+            if (!beforeCompletionInvoked) {
+                triggerBeforeCompletion(status);
+            }
+            doRollbackOnCommitException(status, err);
+            throw err;
+        }
+
+        // Trigger afterCommit callbacks, with an exception thrown there
+        // propagated to callers but the transaction still considered as committed.
+        try {
+            // 触发synchronization事件
+            triggerAfterCommit(status);
+        }
+        finally {
+            // 触发synchronization事件
+            triggerAfterCompletion(status, TransactionSynchronization.STATUS_COMMITTED);
+        }
+
+    }
+    finally {
+        // 清理事务资源
+        cleanupAfterCompletion(status);
+    }
 }
 ```
 
