@@ -2844,13 +2844,21 @@ com.wenqi.tx.savepoint.SavepointDemo
 
 ### 声明式事务
 
+- 对比编程式事务
+  - 编程式事务需要耦合业务代码，而声明式事务可以避免这种情况；
+  - 声明式事务声明在method，会包裹整个method都是一个事务，带来大事务等问题。
 
+由上述的编程式事务我们可以知道，Spring Transaction实现了整个事务的生命周期，并通过模板方法的设计模式，让开发者关注业务方法的实现，而不用过多操心事务管理的细节。
 
+当我们使用声明式事务时，目的是让整个service方法加入事务，这时我们很自然得想到外观模式（`Facade pattern`）。对于Spring很自然地想到了Spring AOP。
 
+<img src="Spring揭秘.assets/声明式事务设计模式.png" alt="image-20230312114229817" style="zoom:50%;" />
 
+> 声明式事务实现原理
 
+自定义方法拦截器管理事务（最初的样子）：com.wenqi.tx.declaration.PrototypeTransactionInterceptor
 
-
+Spring提供事务拦截器：org.springframework.transaction.interceptor.TransactionInterceptor
 
 
 
