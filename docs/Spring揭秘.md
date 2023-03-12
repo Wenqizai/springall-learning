@@ -2818,7 +2818,29 @@ public interface TransactionStatus extends SavepointManager {
 
 com.wenqi.tx.manage.TransactionTemplateDemo
 
+> 基于Savepoint的嵌套事务
 
+通常情况下，我们通过使用TransactionStatus.setRollbackOnly()来干预事务的状态，同时TransactionStatus也作为一个SavepointManager，也可以使用Savepoint机制来创建嵌套事务。
+
+- 嵌套事务示例
+
+com.wenqi.tx.savepoint.SavepointDemo
+
+通过使用`txStatus.rollbackToSavepoint(savepointBeforeDeposit);`，可以将这些数据恢复到savepoint之前的状态，而不会破坏当前事务的完整性。
+
+- 假如使用`PROPAGATION_REQUIRES_NEW`呢？
+
+如果在这里通过传播行为是`PROPAGATION_REQUIRES_NEW`的TransactionDefinition创建一个新的事务的话，虽然deposit过程中出现问题也可以回滚数据，但取款与存款的操作就不在同一个事务中了（取款在当前事务，存款在另一个新的事务），这无疑违反了事务的ACID属性。
+
+- 假如使用`PROPAGATION_REQUIRED`呢？
+
+取款和存款的过程属于同一个事务，可以做到同时回滚同时提交的效果。但需要考虑该事务是不是too big？取款和存款是分布式事务呢，并发性等问题？
+
+- `PROPAGATION_NESTED`值得拥有
+
+通过使用TransactionStatus创建基于Savepoint的嵌套事务并非创建嵌套事务的唯一方式，也并
+非最方便的方式。实际上，我们更倾向于使用结合`PROPAGATION_NESTED`传播行为的声明式事务管理
+方式。
 
 ### 声明式事务
 
