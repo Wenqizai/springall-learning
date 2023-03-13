@@ -2860,7 +2860,22 @@ com.wenqi.tx.savepoint.SavepointDemo
 
 Spring提供事务拦截器：org.springframework.transaction.interceptor.TransactionInterceptor
 
+#### 元数据
 
+##### 基于XML
+
+可以使用以下4种配置方式，在IOC容器的配置文件中指定事务需要的元数据。
+
+1. 使用ProxyFactory（ProxyFactoryBean）+ TransactionInterceptor；
+2. 使用一站式的TransactionProxyFactoryBean；
+3. 使用BeanNameAutoProxyCreator；
+4. 使用声明事务配置方式
+
+
+
+
+
+##### 基于注解
 
 
 
