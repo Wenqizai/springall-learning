@@ -72,4 +72,19 @@
         </property>
     </bean>
 
+    <!-- 3. BeanNameAutoProxyCreator -->
+    <bean id="autoProxyCreator" class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+        <property name="interceptorNames">
+            <list>
+                <value>transactionInterceptor</value>
+            </list>
+        </property>
+        <property name="beanNames">
+            <list>
+                <idref bean="quoteServiceTarget"/>
+            </list>
+        </property>
+    </bean>
+    
+    
 </beans>

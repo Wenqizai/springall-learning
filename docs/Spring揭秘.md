@@ -2939,6 +2939,12 @@ TransactionProxyFactoryBean是专门面试事务管理的ProxyFactoryBean，直�
 
 TransactionProxyFactoryBean整合了ProxyFactoryBean和TransactionInterceptor，职责更加单一，但是针对每个业务对象还是需要配置一遍，这时就需要AOP的自动代理机制来解放劳动力。
 
+> **BeanNameAutoProxyCreator**
+
+BeanNameAutoProxyCreator进一步简化配置工作，所有的声明事务相关对象一次装配到位。
+
+
+
 ##### 基于注解
 
 
