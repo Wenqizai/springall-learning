@@ -2949,7 +2949,9 @@ BeanNameAutoProxyCreator进一步简化配置工作，所有的声明事务相�
 
 ##### 基于注解
 
+注解形式的声明式事务只要通过注解`org.springframework.transaction.annotation.Transactional`，通过注解指定事务相关的元数据。
 
+`@Transactional`只是一个标志，Spring通过反射读取注解信息，并根据这些信息构建事务，才能使这些声明的事务行为生效。关于注解解析`@Transactional`过程demo：`com.wenqi.tx.declaration.annometadata.AnnotationMetaDataResolver`
 
 
 
