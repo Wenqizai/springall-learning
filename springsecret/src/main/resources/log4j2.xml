@@ -19,7 +19,10 @@
         <Logger name="org.springframework" level="TRACE" additivity="FALSE">
             <AppenderRef ref="STDOUT" />
         </Logger>
-        <Root level="INFO">
+        <Logger name="org.springframework.transaction.interceptor" level="TRACE" additivity="FALSE">
+            <AppenderRef ref="STDOUT" />
+        </Logger>
+        <Root level="DEBUG">
             <AppenderRef ref="STDOUT" />
         </Root>
     </Loggers>

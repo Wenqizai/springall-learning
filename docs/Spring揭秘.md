@@ -2852,7 +2852,7 @@ com.wenqi.tx.savepoint.SavepointDemo
 
 当我们使用声明式事务时，目的是让整个service方法加入事务，这时我们很自然得想到外观模式（`Facade pattern`）。对于Spring很自然地想到了Spring AOP。
 
-<img src="Spring揭秘.assets/声明式事务设计模式.png" alt="image-20230312114229817" style="zoom:50%;" />
+<img src="Spring揭秘.assets/声明式事务设计模式.png" alt="声明式事务设计模式.png" style="zoom:50%;" />
 
 > 声明式事务实现原理
 
@@ -2861,6 +2861,11 @@ com.wenqi.tx.savepoint.SavepointDemo
 Spring提供事务拦截器：org.springframework.transaction.interceptor.TransactionInterceptor
 
 #### 元数据
+
+所谓事务的元数据，主要包括：
+
+1. 事务拦截的业务方法service
+2. TransactionDefinition的属性填充
 
 ##### 基于XML
 
@@ -2871,9 +2876,62 @@ Spring提供事务拦截器：org.springframework.transaction.interceptor.Transa
 3. 使用BeanNameAutoProxyCreator；
 4. 使用声明事务配置方式
 
+com.wenqi.tx.declaration.xmlmetadata.XmlMetaDataDemo
 
+> **ProxyFactory（ProxyFactoryBean）+ TransactionInterceptor**
 
+xml定义的Bean信息，主要为TransactionInterceptor提供需要的事务信息TransactionDefinition（具体来说是TransactionAttribute），并由TransactionInterceptor拦截业务方法，完成事务操作过程，实际上这也是AOP的配置过程。
 
+通过ProxyFactory（ProxyFactoryBean）完成事务管理这一横切关注点到系统的织入工作。
+
+- **事务信息的存储**
+
+在TransactionInterceptor通过方法`TransactionAspectSupport#setTransactionAttributes`和`NameMatchTransactionAttributeSource#getTransactionAttribute`来设置和获取transactionAttribute，即TransactionDefinition。并由TransactionAttributeSource对其进行存储。TransactionAttributeSource是一个接口，其具体实现类以不同的形式存储了从不同位置获取的事务管理元数据信息，比如：
+
+- NameMatchTransactionAttributeSource：以**方法名**作为映射信息的Key，对相应的元数据进行存储；
+
+- MethodMapTransactionAttributeSource：以对应每个方法的**Method实例**作为Key，来存储元数据对应的映射信息；
+
+- AnnotationTransactionAttributeSource：以是直接从源代码中的**注解**中获取对应每个业务方法的事务管理信息。（注解解析过程：`org.springframework.transaction.interceptor.AbstractFallbackTransactionAttributeSource#getTransactionAttribute`）
+
+```java
+// NameMatchTransactionAttributeSource
+/** Keys are method names; values are TransactionAttributes. */
+private Map<String, TransactionAttribute> nameMap = new HashMap<>();
+
+// MethodMapTransactionAttributeSource
+/** Map from Method to TransactionAttribute. */
+private final Map<Method, TransactionAttribute> transactionAttributeMap = new HashMap<>();
+
+// AnnotationTransactionAttributeSource
+/**
+ * Cache of TransactionAttributes, keyed by method on a specific target class.
+ * <p>As this base class is not marked Serializable, the cache will be recreated
+ * after serialization - provided that the concrete subclass is Serializable.
+ */
+private final Map<Object, TransactionAttribute> attributeCache = new ConcurrentHashMap<>(1024);
+private final Set<TransactionAnnotationParser> annotationParsers;
+```
+
+- **元数据事务属性指定规则**
+
+```xml
+<property name="transactionAttributes">
+    <props>
+        <prop key="getQuote">PROPAGATION_SUPPORTS,readOnly,timeout_20</prop>
+        <prop key="saveQuote">PROPAGATION_REQUIRED</prop>
+        <prop key="updateQuote">PROPAGATION_REQUIRED</prop>
+        <prop key="deleteQuote">PROPAGATION_REQUIRED</prop>
+    </props>
+</property>
+```
+
+属性由`org.springframework.transaction.interceptor.TransactionAttributeEditor`负责解析xml设置的String，同时并将value填充到TransactionAttribute中（即TransactionDefinition）。
+
+```txt
+# 事务的属性规则(-: rollback-on-exception  +: commit-on-exception) 
+PROPAGATION.NAME, [ISOLATION_NAME], [readonly], [timeout_NNNN], [+Exception1], [-Exception2]
+```
 
 ##### 基于注解
 
