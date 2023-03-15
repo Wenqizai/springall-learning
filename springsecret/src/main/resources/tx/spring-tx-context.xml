@@ -11,16 +11,6 @@
         http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
 
     <!-- 注入事务的元数据 -->
-    <bean id="quoteService" class="org.springframework.aop.framework.ProxyFactoryBean">
-        <property name="target" ref="quoteServiceTarget"/>
-        <property name="proxyInterfaces" value="com.wenqi.tx.declaration.IQuoteService"/>
-        <property name="interceptorNames">
-            <list>
-                <value>transactionInterceptor</value>
-            </list>
-        </property>
-    </bean>
-
     <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
         <property name="url" value="jdbc:mysql://10.0.88.8:3306/test_db"/>
         <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
@@ -36,6 +26,25 @@
         <property name="dataSource" ref="dataSource"/>
     </bean>
 
+    <bean id="quoteServiceTarget" class="com.wenqi.tx.declaration.QuoteService">
+        <constructor-arg name="jdbcTemplate" ref="jdbcTemplate"/>
+    </bean>
+
+    <bean id="quoteServiceClient" class="com.wenqi.tx.declaration.QuoteServiceClient">
+        <property name="quoteService" ref="quoteServiceTarget"/>
+    </bean>
+
+    <!-- 1. ProxyFactory（ProxyFactoryBean）+ TransactionInterceptor -->
+    <bean id="quoteService" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="target" ref="quoteServiceTarget"/>
+        <property name="proxyInterfaces" value="com.wenqi.tx.declaration.IQuoteService"/>
+        <property name="interceptorNames">
+            <list>
+                <value>transactionInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
     <bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
         <property name="transactionManager" ref="transactionManager"/>
         <property name="transactionAttributes">
@@ -48,13 +57,19 @@
         </property>
     </bean>
 
-    <bean id="quoteServiceTarget" class="com.wenqi.tx.declaration.QuoteService">
-        <constructor-arg name="jdbcTemplate" ref="jdbcTemplate"/>
+    <!-- 2. 一站式的TransactionProxyFactoryBean -->
+    <bean id="quoteService2" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="target" ref="quoteServiceTarget"/>
+        <property name="proxyInterfaces" value="com.wenqi.tx.declaration.IQuoteService"/>
+        <property name="transactionManager" ref="transactionManager"/>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="getQuote">PROPAGATION_SUPPORTS,readOnly,timeout_20</prop>
+                <prop key="saveQuote">PROPAGATION_REQUIRED</prop>
+                <prop key="updateQuote">PROPAGATION_REQUIRED</prop>
+                <prop key="deleteQuote">PROPAGATION_REQUIRED</prop>
+            </props>
+        </property>
     </bean>
-
-    <bean id="quoteServiceClient" class="com.wenqi.tx.declaration.QuoteServiceClient">
-        <property name="quoteService" ref="quoteServiceTarget"/>
-    </bean>
-
 
 </beans>

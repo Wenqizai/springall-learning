@@ -2876,7 +2876,7 @@ Spring提供事务拦截器：org.springframework.transaction.interceptor.Transa
 3. 使用BeanNameAutoProxyCreator；
 4. 使用声明事务配置方式
 
-com.wenqi.tx.declaration.xmlmetadata.XmlMetaDataDemo
+com.wenqi.tx.declaration.xmlmetadata.XmlMetaDataProxyFactoryBeanDemo
 
 > **ProxyFactory（ProxyFactoryBean）+ TransactionInterceptor**
 
@@ -2932,6 +2932,12 @@ private final Set<TransactionAnnotationParser> annotationParsers;
 # 事务的属性规则(-: rollback-on-exception  +: commit-on-exception) 
 PROPAGATION.NAME, [ISOLATION_NAME], [readonly], [timeout_NNNN], [+Exception1], [-Exception2]
 ```
+
+> **一站式的TransactionProxyFactoryBean**
+
+TransactionProxyFactoryBean是专门面试事务管理的ProxyFactoryBean，直接将TransactionInterceptor纳入自身进行管理。TransactionProxyFactoryBean的bean定义指定了事务相关的元数据、事务管理器等信息。
+
+TransactionProxyFactoryBean整合了ProxyFactoryBean和TransactionInterceptor，职责更加单一，但是针对每个业务对象还是需要配置一遍，这时就需要AOP的自动代理机制来解放劳动力。
 
 ##### 基于注解
 
