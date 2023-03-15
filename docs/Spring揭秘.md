@@ -2943,7 +2943,9 @@ TransactionProxyFactoryBean整合了ProxyFactoryBean和TransactionInterceptor，
 
 BeanNameAutoProxyCreator进一步简化配置工作，所有的声明事务相关对象一次装配到位。
 
+> 使用声明事务配置方式
 
+使用标签表达式声明事务，如：`<aop:config>`、`<tx:advice>`
 
 ##### 基于注解
 
