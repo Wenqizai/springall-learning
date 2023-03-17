@@ -2955,13 +2955,21 @@ BeanNameAutoProxyCreator进一步简化配置工作，所有的声明事务相�
 
 # Spring MVC
 
+Spring MVC通过引入Front Controller（`org.springframework.web.servlet.DispatcherServlet`）和Page Controller（`org.springframework.web.servlet.mvc.Controller`）的概念来分离流程控制逻辑与具体的Web请求处理逻辑.
 
+DispatcherServlet：作为Spring MVC的Front Controller，负责接收并处理所有的Web请求，针对具体的处理逻辑委托给它下一级控制器去实现，即Page Controller。
 
+![image-20230317141957786](Spring揭秘.assets/SpringMVC-Controller.png)
 
+DispatcherServlet需要注册到web.xml中，为特定的请求做映射匹配，需要我们在web.xml中做URL映射配置。我们知道web.xml中的URL匹配的配置需要通用的，为业务提供灵活的可拓展性。因此，我们需要一个东西来解析不同的路径的映射关系，从而找到匹配的Page Controller。这时Spring MVC提供了专门管理Web请求到具体的处理类之间的映射关系类：HandlerMapping。
 
+> 流程
 
+当请求到达DispatcherServlet时，寻找具体的HandlerMapping实例，从而获取当前Web请求的具体处理类Controller。
 
+Controller处理完毕返回ModelAndView，DispatcherServlet之后委托给ViewResolver将根据ModelAndView中的逻辑视图名查找相应的View实现类。DispatcherServlet最终会将ModelAndview中的模型数据交给返回的view来处理最终的视图渲染工作。
 
+**注意：** Spring MVC不是Controller内部完成视图的渲染工作就可以了。而是Spring提出了一套基于ViewResolver和view接口的Web视图处理抽象层，以屏蔽Web框架在使用不同的Web视图技术时候的差异性。
 
-
+![image-20230317150522839](Spring揭秘.assets/SpringMVC处理请求流程.png)
 
