@@ -2953,7 +2953,7 @@ BeanNameAutoProxyCreator进一步简化配置工作，所有的声明事务相�
 
 `@Transactional`只是一个标志，Spring通过反射读取注解信息，并根据这些信息构建事务，才能使这些声明的事务行为生效。关于注解解析`@Transactional`过程demo：`com.wenqi.tx.declaration.annometadata.AnnotationMetaDataResolver`
 
-
+# Spring MVC
 
 
 
