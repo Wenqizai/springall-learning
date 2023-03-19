@@ -2973,3 +2973,43 @@ Controller处理完毕返回ModelAndView，DispatcherServlet之后委托给ViewR
 
 ![image-20230317150522839](Spring揭秘.assets/SpringMVC处理请求流程.png)
 
+## HandlerMapping
+
+HandlerMapping帮助DispatcherServlet进行Web请求的URL到具体处理类的匹配。HandlerMapping是一个接口，匹配的逻辑由其子类完成。
+
+**![image-20230318155616743](Spring%E6%8F%AD%E7%A7%98.assets/HandlerMapping实现类.png)**
+
+我们可以为DispatcherServlet提供多个HandlerMapping供其使用，DispatcherServlet在选用HandlerMapping的过程中，将根据我们所指定的优先级进行排序（Ordered接口），然后有限使用优先级在前的HandlerMapping（轮询找到其中一个就返回）。
+
+## Controller
+
+Controller作为顶层接口，具体实现逻辑交给子类实现。我们知道在处理Web请求时需要处理很多细节的东西，如请求参数的抽取、请求编码的设定、国际化信息处理、Session数据管理等等。实际上我们可能不关注这些细节的实现，更关注于业务实现，此时Spring MVC会把这一部分逻辑封装在子类，可以直接通过继承该子类来获取这些功能的支持。
+
+![image-20230318165701194](Spring%E6%8F%AD%E7%A7%98.assets/Controller的层次.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
