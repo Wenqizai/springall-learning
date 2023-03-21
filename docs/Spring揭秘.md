@@ -2987,19 +2987,50 @@ Controller作为顶层接口，具体实现逻辑交给子类实现。我们知�
 
 ![image-20230318165701194](Spring%E6%8F%AD%E7%A7%98.assets/Controller的层次.png)
 
+## ModelAndView
 
+![image-20230321095731180](Spring揭秘.assets/ModelAndView视图原理.png)
 
+## ViewResolver
 
+ViewResolver主要职责是根据Controller所返回的ModelAndView中的逻辑视图名，为DispatcherServlet返回一个可用的View实例。
 
+为了避免每次请求都创建一次view，缓存view是很有必要的，参考实践类：`org.springframework.web.servlet.view.AbstractCachingViewResolver`
 
+> 主要实现类
 
+![ViewResolver相关实现类.png](Spring揭秘.assets/ViewResolver相关实现类.png)
 
+**单一视图类型**：不需要指定明确的逻辑视图名与具体视图之间的映射关系，对应的ViewResolver将自动到指定位置匹配自己所管辖的那种视图模板，并构造具体的View实例。
 
+- **InternalResourceViewResolver**
 
+  对应的视图映射是InternalResourceView，主要处理JSP模板类型的视图映射。如果DispatcherServlet在初始化时，找不到ViewResolver，InternalResourceViewResolver就作为默认的ViewResolver（读`DispatcherServlet.properties`文件）。
 
+- **FreeMarkerViewResolver**
 
+  根据逻辑视图名到指定的未知获取对应的模板文件，冰构造FreeMarkerView的实例返回给DispatcherSerlvet使用。
 
+**多视图类型：**使用面向多视图类型的ViewResolver，我们需要通过某种<u>配置方式明确指定逻辑视图名与具体视图之间的映射关系</u>，这可能带来配置上的烦琐。不过好处是，面向多视图类型的ViewResolver可以顾及多种视图类型的映射管理。
 
+- **ResourceBundleViewResolver**
+
+  ResourceBundleViewResolver构建在ResourceBundle上，继承ResourceBundle国际化支持能力，也是所有的ViewResolver实现类中唯一提供视图国际化支持的ViewResolver。ResourceBundleviewResolver管理的视图的逻辑名称与具体视图的映射关系保存在properties文件中，格式符合Spring的IoC容器的propertiesi配置格式。ResourceBundleviewResolver内部将通过PropertiesBeanDefinitionReader加载这些配置信息。之后，根据逻辑视图名查找的操作，实际上也就简化为`beanfactory.getBean(viewName)`的形式。
+
+- **XmlViewResolver**
+
+  XmlViewResolver与ResourceBundleViewResolver功能大致相同，他们之间最主要的区别就是它们所采用的配置文件格式不同。ResourceBundleviewResolver按照Spring IOC容器所接受的properties配置格式配置逻辑视图名与具体视图之间的映射关系，而XmlViewResolver则
+  是按照Spring IoC容器接受的XML配置文件格式来加载映射信息。
+
+  同时XmlViewResolver不支持国际化。
+
+> 视图查找
+
+DispatcherServlet基于多视图查找
+
+1. 在启动阶段获取所有的ViewResolve的Bean：`org.springframework.web.servlet.DispatcherServlet#initViewResolvers`；
+2. 按照order进行优先级排序；
+3. 视图查找过程：`org.springframework.web.servlet.DispatcherServlet#resolveViewName`。
 
 
 
