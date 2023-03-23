@@ -2971,9 +2971,13 @@ Controller处理完毕返回ModelAndView，DispatcherServlet之后委托给ViewR
 
 **注意：** Spring MVC不是Controller内部完成视图的渲染工作就可以了。而是Spring提出了一套基于ViewResolver和view接口的Web视图处理抽象层，以屏蔽Web框架在使用不同的Web视图技术时候的差异性。
 
+![image-20230322144713567](Spring揭秘.assets/SpringMVC骨干.png)
+
 ![image-20230317150522839](Spring揭秘.assets/SpringMVC处理请求流程.png)
 
-## HandlerMapping
+## Spring MVC的骨干
+
+### HandlerMapping
 
 HandlerMapping帮助DispatcherServlet进行Web请求的URL到具体处理类的匹配。HandlerMapping是一个接口，匹配的逻辑由其子类完成。
 
@@ -2981,17 +2985,17 @@ HandlerMapping帮助DispatcherServlet进行Web请求的URL到具体处理类的�
 
 我们可以为DispatcherServlet提供多个HandlerMapping供其使用，DispatcherServlet在选用HandlerMapping的过程中，将根据我们所指定的优先级进行排序（Ordered接口），然后有限使用优先级在前的HandlerMapping（轮询找到其中一个就返回）。
 
-## Controller
+### Controller
 
 Controller作为顶层接口，具体实现逻辑交给子类实现。我们知道在处理Web请求时需要处理很多细节的东西，如请求参数的抽取、请求编码的设定、国际化信息处理、Session数据管理等等。实际上我们可能不关注这些细节的实现，更关注于业务实现，此时Spring MVC会把这一部分逻辑封装在子类，可以直接通过继承该子类来获取这些功能的支持。
 
 ![image-20230318165701194](Spring%E6%8F%AD%E7%A7%98.assets/Controller的层次.png)
 
-## ModelAndView
+### ModelAndView
 
 ![image-20230321095731180](Spring揭秘.assets/ModelAndView视图原理.png)
 
-## ViewResolver
+### ViewResolver
 
 ViewResolver主要职责是根据Controller所返回的ModelAndView中的逻辑视图名，为DispatcherServlet返回一个可用的View实例。
 
@@ -3032,11 +3036,57 @@ DispatcherServlet基于多视图查找
 2. 按照order进行优先级排序；
 3. 视图查找过程：`org.springframework.web.servlet.DispatcherServlet#resolveViewName`。
 
+### View
 
+View的主要职责是在`View.render()`中完成视图渲染的工作，但对于DispatcherServlet来说是透明的。DispatcherServlet只是由ViewResolver返回的View后，调用render()方法完成视图渲染工作，具体如何工作DispatcherServlet不关系。
 
+## Spring MVC的丰满
 
+![image-20230322144948150](Spring揭秘.assets/SpringMVC丰满.png)
 
+- **MultipartResolver**
 
+  位于HandlerMapping之前，处理由文件上传的请求。
+
+- **HandlerInterceptor**
+
+  将对处理流程进行拦截，如上图灰色斜线底纹的长方形处。
+
+- **HandlerAdaptor**
+
+  适配器，用来处理不同类型的Handler
+
+- **HandlerExceptionResolver**
+
+  处理具体Web请求的过程中，相应的Handler出现异常情况处理，提供一种框架内的标准处理方式。
+
+- **LocaleResolver**
+
+  支持根据用户的Locale显示不同的视图
+
+- **ThemeResolver**
+
+  支持根据用户选择不同的主题 
+
+## MultipartResolver
+
+DispatcherServlet启动过程中会从容器中获取MultipartResolver的Bean（`org.springframework.web.servlet.DispatcherServlet#initMultipartResolver`）。
+
+DispatcherServlet处理请求文件上传请求：`org.springframework.web.servlet.DispatcherServlet#checkMultipart`
+
+1. 首先检查请求是否为multipart类型（`isMultipart()`），若不是返回原始的request
+2. 处理multipart类型请求委托方法（`resolveMultipart()`）
+3. `resolveMultipart()`主要是处理HttpServletRequest并返回MultipartHttpServletRequest（extend MultipartRequest）
+
+```java
+public interface MultipartResolver {
+    boolean isMultipart(HttpServletRequest request);
+
+    MultipartHttpServletRequest resolveMultipart(HttpServletRequest request) throws MultipartException;
+
+    void cleanupMultipart(MultipartHttpServletRequest request);
+}
+```
 
 
 
