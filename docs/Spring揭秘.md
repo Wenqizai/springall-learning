@@ -3088,6 +3088,47 @@ public interface MultipartResolver {
 }
 ```
 
+## HandlerAdaptor
+
+DispatcherServlet在处理请求时，会根据HandlerMapping获取到一个Handler（注意此时返回的是HandlerExecutionChain，其用Object封装了Handler）。
+
+由于Handler类型不同，handle方式也不一，而DispatcherServlet并不关心Handler处理的流程（职责单一），只关心Handler处理完成后返回的ModelAndView。
+
+此时，DispatcherServlet就很需要一个HandlerAdaptor来handle，屏蔽各种Handler的处理细节。
+
+- HandlerAdapter主要干了这些：
+
+DispatcherServlet调用`HandlerAdapter.supports()`，查看Handler是否支持，若返回true则支持当前的Handler；然后调用`HandlerAdapter.handle()`，获取ModelAndView。
+
+```java
+public interface HandlerAdapter {
+    boolean supports(Object handler);
+
+    @Nullable
+    ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception;
+
+    long getLastModified(HttpServletRequest request, Object handler);
+}
+```
+
+==延申疑问：==
+
+1. 如果Controller只是一种特殊类型的Handler，那么Spring MVC是否还提供了其他可用的Handler类型呢？如果要提供我们自己的Handler类型又需要考虑哪些事情呢？
+2. 如何实现一个具体的HandlerAdaptor？Spring MVC有提供现成的实现吗？
+3. 如果想使用自定义的Handler，并且提供了对应的HandlerAdaptor实现，要通过什么方式告知DispatcherServlet来使用它们？
+
+## Handler
+
+![自定义Handler关系图.drawio](Spring揭秘.assets/自定义Handler关系图.jpg)
+
+有上述图示可知，要想实现自定义的Handler，必须实现相应的HandlerMapping和HandlerAdater接口。我们常见注解标注的`@RequestMapping()`的业务Controller，对应的Adapter是`RequestMappingHandlerAdapter`。
+
+
+
+
+
+
+
 
 
 
