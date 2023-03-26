@@ -3123,11 +3123,40 @@ public interface HandlerAdapter {
 
 有上述图示可知，要想实现自定义的Handler，必须实现相应的HandlerMapping和HandlerAdater接口。我们常见注解标注的`@RequestMapping()`的业务Controller，对应的Adapter是`RequestMappingHandlerAdapter`。
 
+## HandlerInterceptor
 
+在HandlerMapping获取响应的Handler时返回的是HandlerExecutionChain，其中HandlerExecutionChain不仅仅封装了Hanlder还有HandlerInterceptor。
 
+`注意：`返回的HandlerInterceptor是一个数组，通过遍历数组执行接口方法。
 
+> 相关接口
 
+```java
+public interface HandlerInterceptor {
+  // 在相应的HandlerAdaptor调用具体Handler.hanlde()处理Web请求之前执行。
+  // 返回值 true/false 表明是否继续执行后续处理流程
+  default boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    return true;
+  }
+	// 在相应的HandlerAdaptor调用具体Handler.hanlde()处理Web请求之后，在视图解析和渲染之前执行。
+  // 此时我们已经拿到了ModelAndView了，就可以对其进行修改
+  default void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable ModelAndView modelAndView) throws Exception {
+  }
 
+  // 整个处理流程结束之后，或者说视图都渲染完了，不管是否发生异常，该方法将被执行
+  // 调用链 processDispatchResult -> render -> triggerAfterCompletion
+  // 注意：当preHandle返回false之后调用该方法时，只会在之前preHandle已经返回true的HandlerInterceptor调用
+  // 其通过interceptorIndexj
+  default void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable Exception ex) throws Exception {
+  }
+
+}
+```
+
+1. 调用preHandle()：`org.springframework.web.servlet.HandlerExecutionChain#applyPreHandle`
+
+2. 调用postHandle()：`org.springframework.web.servlet.HandlerExecutionChain#applyPostHandle`
+3. 调用afterCompletion()：`org.springframework.web.servlet.HandlerExecutionChain#triggerAfterCompletion`
 
 
 
