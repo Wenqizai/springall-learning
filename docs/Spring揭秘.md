@@ -3158,6 +3158,62 @@ public interface HandlerInterceptor {
 2. 调用postHandle()：`org.springframework.web.servlet.HandlerExecutionChain#applyPostHandle`
 3. 调用afterCompletion()：`org.springframework.web.servlet.HandlerExecutionChain#triggerAfterCompletion`
 
+> 自定义的Interceptor如何加入容器管理
+
+属性注入方式：`org.springframework.web.servlet.handler.AbstractHandlerMapping#setInterceptors`
+
+- eg
+
+```xml
+<bean id="handlerMapping" class="org.springframework.Web.servlet.handler.BeanNameUrlHandlerMapping">
+    <property name="interceptors">
+        <list>
+            <ref bean="userRolesAuthHandlerInterceptor"/>
+            <ref bean="WebContentInterceptor"/>
+            <ref bean="marketAccessInterceptor"/>
+        </list>
+    </property>
+</bean>
+```
+
+> Interceptor和servlet Filter
+
+![image-20230329160429976](Spring揭秘.assets/Interceptor和servlet_Filter关系图.png)
+
+Filter是servlet标准组件，需要在web.xml中配置，意味着其生命周期管理更多是有Web容器进行管理的。
+
+如果让Filter加入到IOC容器管理，无疑给开发者带来极大的便利，此时Spring MVC就引入了`org.springframework.web.filter.DelegatingFilterProxy`。
+
+DelegatingFilterProxy的作用是作为一个Filter的Proxy对象，当真正需要执行拦截操作时，其把具体的工作委托给其对应的一个Filter委托对象。
+
+DelegatingFilterProxy主要工作是，绑定到ServletContext的WebApplicationContext中将要使用的Filter委派对象；读取原始Filter配置信息并设置到相应的Filter。
+
+![image-20230329172235785](Spring揭秘.assets/FilterProxy与Filter关系.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
