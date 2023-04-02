@@ -3190,9 +3190,20 @@ DelegatingFilterProxy主要工作是，绑定到ServletContext的WebApplicationC
 
 ![image-20230329172235785](Spring揭秘.assets/FilterProxy与Filter关系.png)
 
+## HandlerExceptionResolver
 
+HandlerExceptionResolver提供框架内统一的异常处理方式，可以在查找、执行Handler过程中throws Exception得到统一的处理。
 
+如果Handler执行过程中没有任何异常，将以ModelAndView的形式返回。如果当中抛出异常，HandlerExceptionResolver将解析处理异常，同样以ModelAndView的形式放回。
 
+```java
+public interface HandlerExceptionResolver {
+
+   ModelAndView resolveException(
+         HttpServletRequest request, HttpServletResponse response, @Nullable Object handler, Exception ex);
+
+}
+```
 
 
 
