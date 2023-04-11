@@ -3205,7 +3205,30 @@ public interface HandlerExceptionResolver {
 }
 ```
 
+## 基于注解
 
+使用注解，xml添加如下配置：
+
+```xml
+<context:component-scan base-package="your.controller.package"/>
+```
+
+使用注解时，首先需要明确两件事情：
+
+1. 如何让Spring MVC其实就是DispatcherServlet知道当前的Web请求应该由哪个基于注解标注的Controller处理；
+2. 如何让Spring MVC调用基于注解的Controller的哪个方法来处理具体的请求。
+
+也就是说，我们需要找到基于注解相关的组件，如Hanlder、HandlerMapping、HandlerAdaptor等。
+
+- HandlerMapping
+
+对于HanderMapping来说，主要职能是找到相应的基于注解标注的Controller，通过实现`getHandler()`方法获取对应处理具体Web请求的Hander。
+
+实现方式：通过反射方式查找标注的注解`@RequestMapping`的类和方法，遍历所有可用的基于注解的Contro1Ier实现类，与实现类中的注解所标注的请求处理映射信息进行比对。
+
+自定义： `com.wenqi.mvc.baseannotation.AnnotationBaseHandlerMapping`
+
+Spring：`org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping`
 
 
 
