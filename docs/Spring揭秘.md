@@ -3218,9 +3218,19 @@ public interface HandlerExceptionResolver {
 1. 如何让Spring MVC其实就是DispatcherServlet知道当前的Web请求应该由哪个基于注解标注的Controller处理；
 2. 如何让Spring MVC调用基于注解的Controller的哪个方法来处理具体的请求。
 
-也就是说，我们需要找到基于注解相关的组件，如Hanlder、HandlerMapping、HandlerAdaptor等。
+也就是说，我们需要找到基于注解相关的组件，如Handler、HandlerMapping、HandlerAdaptor等。
 
-- HandlerMapping
+=== 注Spring MVC基于注解对应的组件: RequestMappingHandlerMapping、RequestMappingHandlerAdapter、注解标注的Controller（即Handler）=== 
+
+- RequestMappingHandlerMapping类图
+
+![image-20230413102852706](Spring揭秘.assets/RequestMappingHandlerMapping类图.png)
+
+- RequestMappingHandlerAdapter
+
+![image-20230413103624237](Spring揭秘.assets/RequestMappingHandlerAdapter类图.png)
+
+> HandlerMapping
 
 对于HanderMapping来说，主要职能是找到相应的基于注解标注的Controller，通过实现`getHandler()`方法获取对应处理具体Web请求的Hander。
 
